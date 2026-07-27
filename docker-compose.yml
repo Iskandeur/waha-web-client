@@ -1,0 +1,16 @@
+# Disposable WAHA instance for local development and testing.
+#
+# Do NOT link this to a real, valued WhatsApp number. Use a throwaway SIM/number
+# you are willing to lose, or WAHA's built-in NOWEB engine against a test account.
+# See README.md "Safety" section before touching a real session.
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - WAHA_API_KEY=change-me-in-.env
+      - WHATSAPP_DEFAULT_ENGINE=NOWEB
+    volumes:
+      - ./waha-data:/app/.sessions

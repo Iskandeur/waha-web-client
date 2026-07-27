@@ -1,0 +1,16 @@
+{
+  "name": "waha-web-client",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted WhatsApp web client (WAHA backend) with an AI command bar",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend"
+  },
+  "license": "MIT"
+}
