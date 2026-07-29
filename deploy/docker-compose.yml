@@ -1,0 +1,34 @@
+# Self-hosted deployment: one container, the built frontend served by the backend (demo mode by
+# default — no WAHA/real WhatsApp connection). See ../README.md "Self-hosted deployment".
+#
+# Bound to 127.0.0.1 only, same pattern as this VPS's other services (WAHA) — reach it from the
+# outside through a reverse proxy / tunnel, never by publishing the port directly.
+#
+# Secrets (ACCESS_PIN, ACCESS_SESSION_SECRET) live in deploy/.env (git-ignored), never committed.
+
+name: whatsapp-sharp
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: whatsapp-sharp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8788}:8787"
+    environment:
+      PORT: 8787
+      ACCESS_PIN: ${ACCESS_PIN}
+      ACCESS_SESSION_SECRET: ${ACCESS_SESSION_SECRET}
+    networks:
+      - tunnel
+
+networks:
+  # External network shared with the host's reverse-proxy/tunnel container, so it can reach this
+  # service by container name (e.g. http://whatsapp-sharp:8787) without publishing the port
+  # publicly. Matches this VPS's `deploy_default` network used by WAHA + cloudflared — adjust the
+  # name below if your host's network is called something else.
+  tunnel:
+    name: ${TUNNEL_NETWORK:-deploy_default}
+    external: true

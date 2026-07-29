@@ -180,6 +180,36 @@ of this frontend can never reach a real backend/WAHA instance unless someone del
 out. For real usage (self-hosted, against your own disposable WAHA instance), set
 `VITE_DEMO_MODE=false` in `frontend/.env` before building/running.
 
+## Self-hosted deployment (single container + PIN gate)
+
+The [`Dockerfile`](Dockerfile) builds one image: the Fastify backend serves both its own API
+routes *and* the built frontend (`frontend/dist`) — no separate web server needed. By default
+(no `VITE_DEMO_MODE=false` at build time, matching the GitHub Pages build) this still ships the
+demo — mock data, no WAHA, no real WhatsApp connection — just running from your own container
+instead of GitHub Pages.
+
+```bash
+docker build -t whatsapp-sharp .
+docker run -p 127.0.0.1:8788:8787 \
+  -e ACCESS_PIN=<pin> -e ACCESS_SESSION_SECRET=$(openssl rand -hex 32) \
+  whatsapp-sharp
+```
+
+An optional **PIN gate** (`backend/src/access-gate.ts`) sits in front of every route when
+`ACCESS_PIN` is set: a single login page (`/login`), a stateless signed session cookie (30-day
+TTL, HMAC'd with `ACCESS_SESSION_SECRET`), everything else 401s/redirects until it's presented.
+Leave `ACCESS_PIN` unset and the gate is a no-op — fine when you're the only one who can reach
+the port. **Never commit real PIN/secret values** — they're read from the environment only.
+
+[`deploy/docker-compose.yml`](deploy/docker-compose.yml) + [`deploy/.env.example`](deploy/.env.example)
+wire this up bound to `127.0.0.1` only, on an external Docker network shared with a reverse-proxy/
+tunnel container (so it's reachable through that, not by publishing the port publicly) —
+copy `deploy/.env.example` to `deploy/.env` (git-ignored), fill in real values, then:
+
+```bash
+cd deploy && docker compose up -d --build
+```
+
 ## Status / checkpoint
 
 Second pass, pivoted after feedback that the first checkpoint's UI was too bare-bones: the
