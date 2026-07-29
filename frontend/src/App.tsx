@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, DEMO_MODE, type Chat, type Message, type OutgoingFile } from "./api.js";
+import { api, DEMO_MODE, PIN_DURATIONS, type Chat, type Message, type OutgoingFile } from "./api.js";
 import { ChatList } from "./components/ChatList.js";
 import { ChatHeader } from "./components/ChatHeader.js";
 import { ChatThread } from "./components/ChatThread.js";
@@ -32,6 +32,10 @@ export default function App() {
     setChats((prev) =>
       prev.map((c) => (c.id === selectedId ? { ...c, unreadCount: 0 } : c)),
     );
+    // Best-effort: a failed read-receipt shouldn't block opening the chat, and the local
+    // unreadCount reset above already gives instant UI feedback either way.
+    api.markRead(selectedId).catch(() => undefined);
+    api.subscribePresence(selectedId).catch(() => undefined);
   }, [selectedId]);
 
   useEffect(() => {
@@ -55,6 +59,26 @@ export default function App() {
     if (!selectedId) return;
     try {
       await api.sendImage(selectedId, file);
+      setMessages(await api.getMessages(selectedId));
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendVideo(file: OutgoingFile) {
+    if (!selectedId) return;
+    try {
+      await api.sendVideo(selectedId, file);
+      setMessages(await api.getMessages(selectedId));
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendFile(file: OutgoingFile) {
+    if (!selectedId) return;
+    try {
+      await api.sendFile(selectedId, file);
       setMessages(await api.getMessages(selectedId));
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
@@ -87,6 +111,36 @@ export default function App() {
     }
   }
 
+  async function handleTogglePin(messageId: string, pinned: boolean) {
+    if (!selectedId) return;
+    const prev = messages;
+    setMessages((ms) => ms.map((m) => (m.id === messageId ? { ...m, pinned } : m)));
+    try {
+      if (pinned) await api.pinMessage(selectedId, messageId, PIN_DURATIONS["24h"]);
+      else await api.unpinMessage(selectedId, messageId);
+    } catch (err) {
+      setMessages(prev);
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleToggleUnread(chatId: string) {
+    const chat = chats.find((c) => c.id === chatId);
+    if (!chat) return;
+    const wasUnread = (chat.unreadCount ?? 0) > 0;
+    const prev = chats;
+    setChats((cs) =>
+      cs.map((c) => (c.id === chatId ? { ...c, unreadCount: wasUnread ? 0 : 1 } : c)),
+    );
+    try {
+      if (wasUnread) await api.markRead(chatId);
+      else await api.markUnread(chatId);
+    } catch (err) {
+      setChats(prev);
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const selectedChat = chats.find((c) => c.id === selectedId) ?? null;
 
   return (
@@ -98,7 +152,12 @@ export default function App() {
       )}
       <div className="app-body">
         <aside className="sidebar">
-          <ChatList chats={chats} selectedId={selectedId} onSelect={setSelectedId} />
+          <ChatList
+            chats={chats}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onToggleUnread={handleToggleUnread}
+          />
         </aside>
         <main className="main">
           {selectedChat ? (
@@ -108,6 +167,7 @@ export default function App() {
                 messages={messages}
                 onReact={handleReact}
                 onToggleStar={handleToggleStar}
+                onTogglePin={handleTogglePin}
               />
               {sendError && <div className="send-error-banner">Message not sent: {sendError}</div>}
               <CommandBar
@@ -119,6 +179,8 @@ export default function App() {
                 onChange={setDraft}
                 onSend={handleSend}
                 onSendImage={handleSendImage}
+                onSendVideo={handleSendVideo}
+                onSendFile={handleSendFile}
               />
             </>
           ) : (

@@ -146,3 +146,15 @@ export function StarIcon({ filled, ...props }: IconProps & { filled?: boolean })
     </Svg>
   );
 }
+
+/** Envelope glyph used for the chat list's "mark as read/unread" toggle. `filled` draws a
+ *  solid dot over the flap — same "there's something here" affordance as `unread-badge`. */
+export function MailIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
+      {filled && <circle cx="18" cy="6" r="4" fill="currentColor" stroke="none" />}
+    </Svg>
+  );
+}

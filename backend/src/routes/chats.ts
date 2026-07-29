@@ -8,6 +8,15 @@ export function isValidFile(file: unknown): file is WahaFileInput {
   return typeof f.url === "string" || typeof f.data === "string";
 }
 
+/** WhatsApp only accepts these three pin durations (24h / 7d / 30d) — WAHA passes the
+ *  `duration` field straight through, so we validate it here rather than let a bad value
+ *  surface as an opaque WAHA 4xx. */
+export const PIN_DURATIONS = [86400, 604800, 2592000] as const;
+
+export function isValidPinDuration(duration: unknown): duration is number {
+  return typeof duration === "number" && (PIN_DURATIONS as readonly number[]).includes(duration);
+}
+
 export async function chatsRoutes(app: FastifyInstance) {
   app.get("/api/chats", async () => waha.chatsOverview());
 
@@ -60,6 +69,46 @@ export async function chatsRoutes(app: FastifyInstance) {
     },
   );
 
+  app.post<{ Params: { chatId: string }; Body: { file: WahaFileInput; caption?: string } }>(
+    "/api/chats/:chatId/file",
+    async (req, reply) => {
+      const { file, caption } = req.body;
+      if (!isValidFile(file)) {
+        reply.code(400);
+        return { error: "file (mimetype + url or data) is required" };
+      }
+      try {
+        return await waha.sendFile(req.params.chatId, file, caption);
+      } catch (err) {
+        if (err instanceof GuardBlockedError) {
+          reply.code(429);
+          return { error: "blocked-by-guard", reason: err.reason };
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.post<{ Params: { chatId: string }; Body: { file: WahaFileInput; caption?: string } }>(
+    "/api/chats/:chatId/video",
+    async (req, reply) => {
+      const { file, caption } = req.body;
+      if (!isValidFile(file)) {
+        reply.code(400);
+        return { error: "file (mimetype + url or data) is required" };
+      }
+      try {
+        return await waha.sendVideo(req.params.chatId, file, caption);
+      } catch (err) {
+        if (err instanceof GuardBlockedError) {
+          reply.code(429);
+          return { error: "blocked-by-guard", reason: err.reason };
+        }
+        throw err;
+      }
+    },
+  );
+
   app.put<{ Params: { chatId: string; messageId: string }; Body: { reaction: string } }>(
     "/api/chats/:chatId/messages/:messageId/reaction",
     async (req, reply) => {
@@ -81,6 +130,49 @@ export async function chatsRoutes(app: FastifyInstance) {
         return { error: "star (boolean) is required" };
       }
       return waha.setStar(req.params.messageId, req.params.chatId, star);
+    },
+  );
+
+  app.post<{ Params: { chatId: string } }>("/api/chats/:chatId/read", async (req) => {
+    await waha.markChatRead(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.post<{ Params: { chatId: string } }>("/api/chats/:chatId/unread", async (req) => {
+    await waha.markChatUnread(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.get<{ Params: { chatId: string } }>("/api/chats/:chatId/presence", async (req) =>
+    waha.getPresence(req.params.chatId),
+  );
+
+  app.post<{ Params: { chatId: string } }>(
+    "/api/chats/:chatId/presence/subscribe",
+    async (req) => {
+      await waha.subscribePresence(req.params.chatId);
+      return { ok: true };
+    },
+  );
+
+  app.post<{ Params: { chatId: string; messageId: string }; Body: { duration: number } }>(
+    "/api/chats/:chatId/messages/:messageId/pin",
+    async (req, reply) => {
+      const { duration } = req.body;
+      if (!isValidPinDuration(duration)) {
+        reply.code(400);
+        return { error: `duration must be one of: ${PIN_DURATIONS.join(", ")}` };
+      }
+      await waha.pinMessage(req.params.chatId, req.params.messageId, duration);
+      return { ok: true };
+    },
+  );
+
+  app.post<{ Params: { chatId: string; messageId: string } }>(
+    "/api/chats/:chatId/messages/:messageId/unpin",
+    async (req) => {
+      await waha.unpinMessage(req.params.chatId, req.params.messageId);
+      return { ok: true };
     },
   );
 }

@@ -30,6 +30,15 @@ export type WahaFileInput =
   | { mimetype: string; filename?: string; url: string }
   | { mimetype: string; filename?: string; data: string };
 
+export interface WahaPresence {
+  id: string;
+  presences: Array<{
+    participant: string;
+    lastKnownPresence: string;
+    lastSeen: number | null;
+  }>;
+}
+
 export class WahaError extends Error {
   constructor(
     public status: number,
@@ -194,6 +203,42 @@ export const waha = {
       { kind: "read", session, chatId },
     ),
 
+  /** Mirrors WhatsApp's own read receipt — sends a "seen" signal to the peer, same as
+   *  opening the chat in the official client. Not a spam-relevant action so it skips
+   *  `sendGuarded` (like reaction/star below) but still runs through `wahaFetch`. */
+  markChatRead: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/read`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  markChatUnread: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/unread`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  /** Peer presence (online/typing/last-seen) is a read, but WAHA groups it with the
+   *  typing-simulation "presence" kind we already use for `startTyping`/`stopTyping` — same
+   *  audit-log bucket. */
+  getPresence: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<WahaPresence>(
+      `/api/${session}/presence/${encodeURIComponent(chatId)}`,
+      {},
+      { kind: "presence", session, chatId },
+    ),
+
+  /** WAHA only pushes live presence.update events for chats you've subscribed to — the
+   *  frontend calls this once before polling/reading a chat's presence. */
+  subscribePresence: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/presence/${encodeURIComponent(chatId)}/subscribe`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "presence", session, chatId },
+    ),
+
   startTyping: (chatId: string, session = config.wahaSession) =>
     wahaFetch<void>(
       "/api/startTyping",
@@ -231,6 +276,26 @@ export const waha = {
       ),
     ),
 
+  /** Same shape and guard path as `sendImage` — WAHA's `sendFile` is the generic-document
+   *  sibling (any mimetype, no image-specific preview handling on WhatsApp's side). */
+  sendFile: (chatId: string, file: WahaFileInput, caption = "", session = config.wahaSession) =>
+    sendGuarded(chatId, caption, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendFile",
+        { method: "POST", body: JSON.stringify({ session, chatId, file, caption }) },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
+  sendVideo: (chatId: string, file: WahaFileInput, caption = "", session = config.wahaSession) =>
+    sendGuarded(chatId, caption, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendVideo",
+        { method: "POST", body: JSON.stringify({ session, chatId, file, caption }) },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
   /** Reactions and stars are lightweight, low-frequency mutations, not "message sends" in the
    *  abuse-pattern sense the send-guard's rate/burst/duplicate rules were tuned for (reacting
    *  with the same emoji in several chats is normal, not a spam signal) — so these skip
@@ -247,6 +312,27 @@ export const waha = {
     wahaFetch<void>(
       "/api/star",
       { method: "PUT", body: JSON.stringify({ session, messageId, chatId, star }) },
+      { kind: "send", session, chatId },
+    ),
+
+  /** `duration` is required by WAHA (WhatsApp itself has no "pin forever") — seconds, one of
+   *  24h/7d/30d in the UI (see `PIN_DURATIONS` in the pin-message route). */
+  pinMessage: (
+    chatId: string,
+    messageId: string,
+    duration: number,
+    session = config.wahaSession,
+  ) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`,
+      { method: "POST", body: JSON.stringify({ duration }) },
+      { kind: "send", session, chatId },
+    ),
+
+  unpinMessage: (chatId: string, messageId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/unpin`,
+      { method: "POST", body: JSON.stringify({}) },
       { kind: "send", session, chatId },
     ),
 };

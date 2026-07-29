@@ -11,10 +11,12 @@ export function ChatThread({
   messages,
   onReact,
   onToggleStar,
+  onTogglePin,
 }: {
   messages: Message[];
   onReact: (messageId: string, emoji: string) => void;
   onToggleStar: (messageId: string, starred: boolean) => void;
+  onTogglePin: (messageId: string, pinned: boolean) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +42,7 @@ export function ChatThread({
               showSender={showSender}
               onReact={(emoji) => onReact(m.id, emoji)}
               onToggleStar={() => onToggleStar(m.id, !m.starred)}
+              onTogglePin={() => onTogglePin(m.id, !m.pinned)}
             />
           </div>
         );

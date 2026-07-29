@@ -1,7 +1,7 @@
 import { demoApi } from "./demo-data.js";
 
 export type MessageStatus = "sent" | "delivered" | "read";
-export type MessageType = "text" | "image" | "file" | "voice";
+export type MessageType = "text" | "image" | "file" | "voice" | "video";
 
 export interface Chat {
   id: string;
@@ -33,8 +33,27 @@ export interface Message {
   status?: MessageStatus;
   reaction?: string;
   starred?: boolean;
+  pinned?: boolean;
   [key: string]: unknown;
 }
+
+export interface PeerPresence {
+  participant: string;
+  lastKnownPresence: string;
+  lastSeen: number | null;
+}
+
+export interface ChatPresence {
+  id: string;
+  presences: PeerPresence[];
+}
+
+/** WhatsApp only supports these three pin lifetimes — mirrors the backend's `PIN_DURATIONS`. */
+export const PIN_DURATIONS = {
+  "24h": 86400,
+  "7d": 604800,
+  "30d": 2592000,
+} as const;
 
 /** Either a remote URL or inline base64 data, both tagged with a mimetype — mirrors WAHA's
  *  `MessageImageRequest.file` shape (see backend `WahaFileInput`). */
@@ -113,6 +132,56 @@ const realApi = {
     fetch(`/api/chats/${encodeURIComponent(chatId)}/picture`).then((r) =>
       json<{ url: string | null }>(r),
     ),
+
+  sendFile: (chatId: string, file: OutgoingFile, caption?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/file`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file, caption }),
+    }).then((r) => json<Message>(r)),
+
+  sendVideo: (chatId: string, file: OutgoingFile, caption?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file, caption }),
+    }).then((r) => json<Message>(r)),
+
+  markRead: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/read`, { method: "POST" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  markUnread: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/unread`, { method: "POST" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  getPresence: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/presence`).then((r) =>
+      json<ChatPresence>(r),
+    ),
+
+  subscribePresence: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/presence/subscribe`, {
+      method: "POST",
+    }).then((r) => json<{ ok: true }>(r)),
+
+  pinMessage: (chatId: string, messageId: string, duration: number) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration }),
+      },
+    ).then((r) => json<{ ok: true }>(r)),
+
+  unpinMessage: (chatId: string, messageId: string) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/unpin`,
+      { method: "POST" },
+    ).then((r) => json<{ ok: true }>(r)),
 
   runAiCommand: (chatId: string, instruction: string) =>
     fetch("/api/ai/command", {

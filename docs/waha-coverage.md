@@ -49,9 +49,9 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `POST /api/sendImage` | Send an image | **done (this job)** | New `waha.sendImage`; see below. |
 | `PUT /api/reaction` | React to a message with an emoji | **done (this job)** | New `waha.setReaction`; see below. |
 | `PUT /api/star` | Star / unstar a message | **done (this job)** | New `waha.setStar`; see below. |
-| `POST /api/sendFile` | Send an arbitrary file/document | todo | Natural next step after image — same upload UX, generic MIME handling. |
+| `POST /api/sendFile` | Send an arbitrary file/document | **done (this job)** | New `waha.sendFile`; see below. |
 | `POST /api/sendVoice` | Send a voice note | todo | Needs an in-browser recorder + `media/convert/voice`; bigger UI lift, deferred. |
-| `POST /api/sendVideo` | Send a video | todo | Same shape as image/file, deferred behind those. |
+| `POST /api/sendVideo` | Send a video | **done (this job)** | New `waha.sendVideo`; see below. |
 | `POST /api/sendLocation` | Share a location (lat/lng pin) | todo | Needs a map picker; moderate UI cost. |
 | `POST /api/sendContactVcard` | Share a contact card | todo | Needs a contact picker UI. |
 | `POST /api/sendPoll`, `POST /api/sendPollVote` | Create/vote on a poll | todo | Multi-field composer UI; moderate complexity. |
@@ -73,10 +73,11 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `GET chats/{chatId}/picture` | Chat/contact avatar image | **done (this job)** | New `waha.getChatPicture`; see below. |
 | `DELETE chats/{chatId}` | Delete a whole conversation | todo | Destructive, needs a confirm dialog; deferred. |
 | `DELETE chats/{chatId}/messages` | Clear all messages in a chat | todo | Same destructive-action caution as above. |
-| `POST chats/{chatId}/messages/read` | Mark chat as read | todo | High UX value (unread badges become meaningful); good candidate for the *next* pass. |
+| `POST chats/{chatId}/messages/read` | Mark chat as read | **done (this job)** | New `waha.markChatRead`; see below. |
 | `GET/DELETE/PUT chats/{chatId}/messages/{messageId}` | Get/delete/edit a single message | todo | Message-level moderation UI; moderate complexity. |
-| `POST .../pin`, `POST .../unpin` | Pin/unpin a message | todo | Small, self-contained; good future quick win. |
-| `POST chats/{chatId}/archive`, `unarchive`, `unread` | Inbox management (archive, mark unread) | todo | Valuable inbox triage feature, deferred with the read/unread work above. |
+| `POST .../pin`, `POST .../unpin` | Pin/unpin a message | **done (this job)** | New `waha.pinMessage`/`waha.unpinMessage`; see below. |
+| `POST chats/{chatId}/archive`, `unarchive` | Inbox management (archive) | todo | Valuable inbox triage feature, deferred. |
+| `POST chats/{chatId}/unread` | Mark chat as unread | **done (this job)** | New `waha.markChatUnread`; see below. |
 
 ## Calls
 
@@ -128,7 +129,8 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `POST presence`, `GET presence`, `GET presence/{chatId}`, `POST presence/{chatId}/subscribe` | Show peer online/typing/last-seen status | todo | We already *emit* our own typing presence when sending (via `startTyping`/`stopTyping` inside `waha.sendText`), but never *read* the peer's. High UX value — strong candidate for the next pass. |
+| `GET presence/{chatId}`, `POST presence/{chatId}/subscribe` | Show peer online/typing/last-seen status | **done (this job)** | New `waha.getPresence`/`waha.subscribePresence`; see below. |
+| `POST presence`, `GET presence` | Set our own global presence / read all-chats presence in one call | todo | We already emit *typing* presence per-chat via `startTyping`/`stopTyping`; a session-wide online/offline toggle and the batch "all chats" read are secondary to the per-chat presence just added. |
 
 ## Screenshot / debug
 
@@ -169,25 +171,55 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 ---
 
-## Added this job
+## Added in previous jobs
 
-Four features, chosen for high visible impact, low risk (no destructive/session-mutating calls),
-and clean fit with the existing `wahaFetch` guard + demo-parity pattern:
+Four features (send image, message reactions, star/unstar, chat/contact avatar) — see git
+history (`docs: map every WAHA endpoint...` and the commit right after it) for details. All
+implemented behind `wahaFetch`, routed in `backend/src/routes/chats.ts`, and mirrored in
+`demoApi` (`frontend/src/demo-data.ts`).
 
-1. **Send image** — `waha.sendImage` → `POST /api/sendImage`, wired through the same send-guard
-   path as text (rate-limit, jitter, typing simulation).
-2. **Message reactions** — `waha.setReaction` → `PUT /api/reaction`.
-3. **Star / unstar a message** — `waha.setStar` → `PUT /api/star`.
-4. **Chat/contact avatar** — `waha.getChatPicture` → `GET /api/{session}/chats/{chatId}/picture`,
-   used by the chat list and thread header.
+## Added this job (v4 pass)
 
-All four: implemented in `backend/src/waha-client.ts` behind `wahaFetch` (never a bare `fetch`),
-routed in `backend/src/routes/chats.ts`, and mirrored in the frontend's `demoApi` (`demo-data.ts`)
-so the public demo keeps working with zero real WAHA calls.
+Eight endpoints — the full "highest-value gaps" list from the previous job's report, chosen
+because every one of them is a low-risk read or a lightweight mutation (no destructive or
+session-lifecycle calls), and all reuse the existing `wahaFetch`/send-guard/demo-parity
+patterns without needing new architecture:
+
+1. **Mark chat read / unread** — `waha.markChatRead` → `POST .../messages/read`,
+   `waha.markChatUnread` → `POST .../unread`. Wired into `App.tsx`: opening a chat now sends a
+   real read receipt (best-effort, never blocks the UI); the chat list gained a hover "mark
+   unread" toggle (new `MailIcon`) so unread badges are round-trippable both ways, not just
+   reset-on-open.
+2. **Peer presence** — `waha.getPresence` → `GET presence/{chatId}`, `waha.subscribePresence` →
+   `POST presence/{chatId}/subscribe` (WAHA requires subscribing before presence updates flow
+   for a chat). `ChatHeader` now subscribes on chat-open and renders the live
+   online/typing/recording/last-seen text (`formatPresence` in `format.ts`) in place of the
+   static demo placeholder, for 1:1 chats (group chats keep the "who's in it" text — presence is
+   inherently a peer concept).
+3. **Send file / send video** — `waha.sendFile` → `POST /api/sendFile`, `waha.sendVideo` →
+   `POST /api/sendVideo`. Same `sendGuarded` path as `sendImage` (a file/video send is exactly
+   as visible to WhatsApp's abuse detection as any other send). The composer's attach button now
+   accepts image *or* video and dispatches by mimetype (mirrors WhatsApp's own "Photos & videos"
+   picker); a second new button (document icon) attaches an arbitrary file via `sendFile`.
+   `MessageBubble` gained a `video` message type (inline `<video>` player) alongside the
+   existing `image`/`file`/`voice` types.
+4. **Pin / unpin a message** — `waha.pinMessage` → `POST .../pin` (WhatsApp requires a
+   `duration`: 24h/7d/30d — the UI always pins for 24h, matching the "quick win" scope),
+   `waha.unpinMessage` → `POST .../unpin`. New pin toggle in the message hover toolbar
+   (`MessageActions`, next to react/star) and a "📌 Pinned" badge on pinned bubbles.
+
+All eight: implemented in `backend/src/waha-client.ts` behind `wahaFetch`, routed in
+`backend/src/routes/chats.ts` (with `isValidPinDuration` guarding the one endpoint that takes a
+constrained body field), and mirrored in `demoApi` so the public demo keeps working with zero
+real WAHA calls — including `getPresence`, which derives a plausible online/offline+lastSeen
+value from the existing canned `Chat.presence` text rather than being a hardcoded stub.
 
 ## What's next (highest-value gaps, not done this job)
 
-In rough priority order for a future pass: chat-level read/unread (`messages/read`,
-`chats/{id}/unread`) to make the unread badges real; peer presence (typing/online/last-seen)
-since we already emit our own; `sendFile`/`sendVideo` to round out media sending; message pin;
-`checkNumberStatus` + contacts list for a real "start new chat" flow.
+In rough priority order for a future pass: `checkNumberStatus` + a contacts list, for a real
+"start new chat by number" flow; single-message get/delete/edit and chat delete/clear (all need
+a confirm-dialog UX for the destructive ones); archive/unarchive for inbox triage; `sendVoice`
+(needs an in-browser recorder) and `sendLocation`/`sendContactVcard` (need picker UI); labels;
+group *management* UI (group messaging already works — it's just another `chatId`); a Settings
+screen for profile (name/about/avatar). Also flagged, not a feature gap: `waha.listChats()` is
+still dead code (no route/UI calls it) — wire it up or remove it.

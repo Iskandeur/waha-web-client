@@ -54,7 +54,24 @@ export function messagePreview(m: PreviewSource): string {
       return `📄 ${m.mediaName ?? "File"}`;
     case "voice":
       return `🎤 Voice message${m.durationSec ? ` · 0:${String(m.durationSec).padStart(2, "0")}` : ""}`;
+    case "video":
+      return m.body ? `🎥 ${m.body}` : "🎥 Video";
     default:
       return m.body;
   }
+}
+
+/** Turns WAHA's `lastKnownPresence`/`lastSeen` pair into the same short strings the demo's
+ *  canned `Chat.presence` text uses ("online" / "last seen today at 09:14"), so ChatHeader can
+ *  treat real and demo presence identically. */
+export function formatPresence(lastKnownPresence: string, lastSeen: number | null): string {
+  if (lastKnownPresence === "online") return "online";
+  if (lastKnownPresence === "typing") return "typing…";
+  if (lastKnownPresence === "recording") return "recording audio…";
+  if (lastSeen == null) return "offline";
+  const d = new Date(lastSeen * 1000);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return sameDay ? `last seen today at ${time}` : `last seen ${d.toLocaleDateString()} at ${time}`;
 }

@@ -1,4 +1,4 @@
-import type { Chat, Message, MessageStatus, MessageType, OutgoingFile } from "./api.js";
+import type { Chat, ChatPresence, Message, MessageStatus, MessageType, OutgoingFile } from "./api.js";
 import { messagePreview } from "./format.js";
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -204,6 +204,95 @@ export const demoApi = {
     const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
     if (message) message.starred = star;
     return delay(undefined);
+  },
+
+  sendFile: (chatId: string, file: OutgoingFile, caption?: string) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "file",
+      body: caption ?? "",
+      mediaName: file.filename ?? "File",
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = messagePreview(message);
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  sendVideo: (chatId: string, file: OutgoingFile, caption?: string) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "video",
+      body: caption ?? "",
+      mediaUrl: "url" in file ? file.url : `data:${file.mimetype};base64,${file.data}`,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = messagePreview(message);
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  markRead: (chatId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) chat.unreadCount = 0;
+    return delay({ ok: true as const });
+  },
+
+  markUnread: (chatId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) chat.unreadCount = Math.max(1, chat.unreadCount ?? 0);
+    return delay({ ok: true as const });
+  },
+
+  // The demo has no live WAHA presence stream — derive a plausible one from the canned
+  // "online" / "last seen ..." text already shown in the chat list, so ChatHeader's real-mode
+  // presence code path renders something sensible here too instead of a hardcoded stub.
+  getPresence: (chatId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    const online = chat?.presence === "online";
+    const presence: ChatPresence = {
+      id: chatId,
+      presences: [
+        {
+          participant: chatId,
+          lastKnownPresence: online ? "online" : "offline",
+          lastSeen: online ? null : ago(3 * HOUR),
+        },
+      ],
+    };
+    return delay(presence);
+  },
+
+  subscribePresence: (_chatId: string) => delay({ ok: true as const }),
+
+  pinMessage: (chatId: string, messageId: string, _duration: number) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message) message.pinned = true;
+    return delay({ ok: true as const });
+  },
+
+  unpinMessage: (chatId: string, messageId: string) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message) message.pinned = false;
+    return delay({ ok: true as const });
   },
 
   // The public demo never has a real profile picture — always fall back to the initials avatar.

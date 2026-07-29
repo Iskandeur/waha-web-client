@@ -2,7 +2,7 @@ import type { Message } from "../api.js";
 import { formatClockTime } from "../format.js";
 import { StatusTicks } from "./StatusTicks.js";
 import { MessageActions } from "./MessageActions.js";
-import { FileIcon, ImageIcon, PlayIcon, StarIcon } from "./icons.js";
+import { FileIcon, ImageIcon, PinIcon, PlayIcon, StarIcon } from "./icons.js";
 
 function MessageContent({ m }: { m: Message }) {
   switch (m.type) {
@@ -15,6 +15,18 @@ function MessageContent({ m }: { m: Message }) {
       ) : (
         <div className="message-media message-media-image">
           <ImageIcon size={28} />
+          {m.body && <div className="message-caption">{m.body}</div>}
+        </div>
+      );
+    case "video":
+      return m.mediaUrl ? (
+        <div className="message-media message-media-video">
+          <video src={m.mediaUrl} controls className="message-video" />
+          {m.body && <div className="message-caption">{m.body}</div>}
+        </div>
+      ) : (
+        <div className="message-media message-media-image">
+          <PlayIcon size={28} />
           {m.body && <div className="message-caption">{m.body}</div>}
         </div>
       );
@@ -47,17 +59,29 @@ export function MessageBubble({
   showSender,
   onReact,
   onToggleStar,
+  onTogglePin,
 }: {
   message: Message;
   showSender?: boolean;
   onReact: (emoji: string) => void;
   onToggleStar: () => void;
+  onTogglePin: () => void;
 }) {
   return (
     <div className={message.fromMe ? "message message-mine" : "message"}>
-      <MessageActions message={message} onReact={onReact} onToggleStar={onToggleStar} />
+      <MessageActions
+        message={message}
+        onReact={onReact}
+        onToggleStar={onToggleStar}
+        onTogglePin={onTogglePin}
+      />
       {showSender && message.senderName && (
         <div className="message-sender">{message.senderName}</div>
+      )}
+      {message.pinned && (
+        <div className="message-pinned-badge">
+          <PinIcon size={11} /> Pinned
+        </div>
       )}
       <MessageContent m={message} />
       <div className="message-meta">

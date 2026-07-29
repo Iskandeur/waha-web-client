@@ -3,7 +3,7 @@ import type { Chat } from "../api.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { StatusTicks } from "./StatusTicks.js";
-import { PinIcon, SearchIcon } from "./icons.js";
+import { MailIcon, PinIcon, SearchIcon } from "./icons.js";
 
 type Filter = "all" | "unread" | "groups";
 
@@ -11,10 +11,12 @@ function ChatListItem({
   chat,
   active,
   onSelect,
+  onToggleUnread,
 }: {
   chat: Chat;
   active: boolean;
   onSelect: () => void;
+  onToggleUnread: () => void;
 }) {
   const hasUnread = (chat.unreadCount ?? 0) > 0;
   return (
@@ -43,6 +45,18 @@ function ChatListItem({
           {hasUnread && <span className="unread-badge">{chat.unreadCount}</span>}
         </div>
       </div>
+      <button
+        type="button"
+        className="chat-list-item-unread-btn"
+        aria-label={hasUnread ? "Mark as read" : "Mark as unread"}
+        title={hasUnread ? "Mark as read" : "Mark as unread"}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleUnread();
+        }}
+      >
+        <MailIcon size={15} filled={hasUnread} />
+      </button>
     </li>
   );
 }
@@ -51,10 +65,12 @@ export function ChatList({
   chats,
   selectedId,
   onSelect,
+  onToggleUnread,
 }: {
   chats: Chat[];
   selectedId: string | null;
   onSelect: (chatId: string) => void;
+  onToggleUnread: (chatId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -99,6 +115,7 @@ export function ChatList({
             chat={chat}
             active={chat.id === selectedId}
             onSelect={() => onSelect(chat.id)}
+            onToggleUnread={() => onToggleUnread(chat.id)}
           />
         ))}
         {visible.length === 0 && <li className="chat-list-empty">No chats match.</li>}

@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useRef } from "react";
 import type { OutgoingFile } from "../api.js";
-import { MicIcon, PaperclipIcon, SendIcon, SmileIcon } from "./icons.js";
+import { FileIcon, MicIcon, PaperclipIcon, SendIcon, SmileIcon } from "./icons.js";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -20,13 +20,18 @@ export function Composer({
   onChange,
   onSend,
   onSendImage,
+  onSendVideo,
+  onSendFile,
 }: {
   value: string;
   onChange: (text: string) => void;
   onSend: (text: string) => void;
   onSendImage: (file: OutgoingFile) => void;
+  onSendVideo: (file: OutgoingFile) => void;
+  onSendFile: (file: OutgoingFile) => void;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -34,12 +39,24 @@ export function Composer({
     onSend(value);
   }
 
-  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+  // One picker for image + video, dispatched by mimetype — same upload UX WhatsApp itself
+  // uses ("Photos & videos" is a single option in its attach menu).
+  async function handleMediaChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     const data = await fileToBase64(file);
-    onSendImage({ mimetype: file.type || "image/jpeg", filename: file.name, data });
+    const outgoing: OutgoingFile = { mimetype: file.type || "image/jpeg", filename: file.name, data };
+    if (file.type.startsWith("video/")) onSendVideo(outgoing);
+    else onSendImage(outgoing);
+  }
+
+  async function handleDocChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const data = await fileToBase64(file);
+    onSendFile({ mimetype: file.type || "application/octet-stream", filename: file.name, data });
   }
 
   return (
@@ -48,20 +65,35 @@ export function Composer({
         <SmileIcon size={22} />
       </button>
       <input
-        ref={fileInputRef}
+        ref={mediaInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         className="composer-file-input"
-        onChange={handleFileChange}
+        onChange={handleMediaChange}
       />
       <button
         type="button"
         className="composer-icon-btn"
-        aria-label="Attach image"
-        title="Attach image"
-        onClick={() => fileInputRef.current?.click()}
+        aria-label="Attach photo or video"
+        title="Attach photo or video"
+        onClick={() => mediaInputRef.current?.click()}
       >
         <PaperclipIcon size={21} />
+      </button>
+      <input
+        ref={docInputRef}
+        type="file"
+        className="composer-file-input"
+        onChange={handleDocChange}
+      />
+      <button
+        type="button"
+        className="composer-icon-btn"
+        aria-label="Attach document"
+        title="Attach document"
+        onClick={() => docInputRef.current?.click()}
+      >
+        <FileIcon size={19} />
       </button>
       <input
         className="composer-input"
