@@ -1,9 +1,10 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { Chat } from "../api.js";
+import type { Chat, Contact } from "../api.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
+import { ContactPicker } from "./ContactPicker.js";
 import { StatusTicks } from "./StatusTicks.js";
-import { MailIcon, PinIcon, SearchIcon } from "./icons.js";
+import { MailIcon, PinIcon, PlusIcon, SearchIcon } from "./icons.js";
 
 type Filter = "all" | "unread" | "groups" | "archived";
 
@@ -81,17 +82,20 @@ export function ChatList({
   onSelect,
   onToggleUnread,
   onStartNewChat,
+  onStartNewChatFromContact,
 }: {
   chats: Chat[];
   selectedId: string | null;
   onSelect: (chatId: string) => void;
   onToggleUnread: (chatId: string) => void;
   onStartNewChat: (phone: string) => Promise<void>;
+  onStartNewChatFromContact: (contact: Contact) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [startingChat, setStartingChat] = useState(false);
   const [startChatError, setStartChatError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const archivedCount = useMemo(() => chats.filter((c) => c.isArchived).length, [chats]);
 
@@ -135,7 +139,26 @@ export function ChatList({
           }}
           placeholder="Search or start a new chat"
         />
+        <button
+          type="button"
+          className="sidebar-new-chat-btn"
+          aria-label="New chat"
+          title="New chat"
+          onClick={() => setPickerOpen(true)}
+        >
+          <PlusIcon size={17} />
+        </button>
       </div>
+      {pickerOpen && (
+        <ContactPicker
+          title="New chat"
+          onSelect={(contact) => {
+            onStartNewChatFromContact(contact);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       <div className="sidebar-filters">
         {(["all", "unread", "groups", "archived"] as const).map((f) => (
           <button
