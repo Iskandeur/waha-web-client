@@ -1,22 +1,56 @@
 import { demoApi } from "./demo-data.js";
 
+export type MessageStatus = "sent" | "delivered" | "read";
+export type MessageType = "text" | "image" | "file" | "voice";
+
 export interface Chat {
   id: string;
-  name?: string;
+  name: string;
+  avatarInitials: string;
+  avatarColor: string;
+  isGroup?: boolean;
+  participantsCount?: number;
+  presence?: string;
+  pinned?: boolean;
+  unreadCount?: number;
+  lastMessagePreview?: string;
+  lastMessageAt?: number;
+  lastMessageFromMe?: boolean;
+  lastMessageStatus?: MessageStatus;
   [key: string]: unknown;
 }
 
 export interface Message {
   id: string;
   timestamp: number;
-  from: string;
   fromMe: boolean;
+  senderName?: string;
+  type: MessageType;
   body: string;
+  mediaName?: string;
+  durationSec?: number;
+  status?: MessageStatus;
   [key: string]: unknown;
 }
 
+export interface SendError {
+  error: string;
+  reason?: string;
+}
+
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    let parsed: SendError | undefined;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      // not JSON — fall through to a generic error below
+    }
+    const err = new Error(parsed?.reason ?? parsed?.error ?? `${res.status} ${body}`);
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
+  }
   return res.json() as Promise<T>;
 }
 

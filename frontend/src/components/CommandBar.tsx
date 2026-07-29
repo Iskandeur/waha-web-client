@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 /** The AI powerbar: free-text instructions ("summarize this thread", "draft a
  *  friendly reply", "what did they say about the trip?") run through the
@@ -14,8 +14,9 @@ export function CommandBar({
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (!instruction.trim() || loading) return;
     setLoading(true);
@@ -31,13 +32,24 @@ export function CommandBar({
     }
   }
 
+  if (!open) {
+    return (
+      <button className="command-bar-toggle" onClick={() => setOpen(true)}>
+        ✨ Ask AI about this chat
+      </button>
+    );
+  }
+
   return (
     <form className="command-bar" onSubmit={submit}>
+      <span className="command-bar-icon">✨</span>
       <input
+        autoFocus
         className="command-bar-input"
         value={instruction}
         onChange={(e) => setInstruction(e.target.value)}
-        placeholder='Ask AI: "summarize this thread", "draft a friendly reply"…'
+        placeholder='"summarize this thread", "draft a friendly reply"…'
+        onBlur={() => !instruction && setOpen(false)}
       />
       <button type="submit" disabled={loading}>
         {loading ? "Thinking…" : "Ask"}
