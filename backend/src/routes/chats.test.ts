@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isValidFile, isValidPinDuration, isValidText, PIN_DURATIONS } from "./chats.js";
+import {
+  isValidContactId,
+  isValidFile,
+  isValidLatitude,
+  isValidLongitude,
+  isValidPinDuration,
+  isValidText,
+  PIN_DURATIONS,
+} from "./chats.js";
 
 test("isValidFile accepts a remote-URL file (mimetype + url)", () => {
   assert.equal(isValidFile({ mimetype: "image/jpeg", url: "https://example.com/x.jpg" }), true);
@@ -61,4 +69,44 @@ test("isValidText rejects non-string input", () => {
   assert.equal(isValidText(null), false);
   assert.equal(isValidText(undefined), false);
   assert.equal(isValidText(42), false);
+});
+
+test("isValidLatitude accepts values within [-90, 90]", () => {
+  assert.equal(isValidLatitude(0), true);
+  assert.equal(isValidLatitude(-90), true);
+  assert.equal(isValidLatitude(90), true);
+  assert.equal(isValidLatitude(38.8937255), true);
+});
+
+test("isValidLatitude rejects out-of-range or non-number input", () => {
+  assert.equal(isValidLatitude(90.1), false);
+  assert.equal(isValidLatitude(-90.1), false);
+  assert.equal(isValidLatitude(NaN), false);
+  assert.equal(isValidLatitude("38.9"), false);
+  assert.equal(isValidLatitude(null), false);
+});
+
+test("isValidLongitude accepts values within [-180, 180]", () => {
+  assert.equal(isValidLongitude(0), true);
+  assert.equal(isValidLongitude(-180), true);
+  assert.equal(isValidLongitude(180), true);
+  assert.equal(isValidLongitude(-77.0969763), true);
+});
+
+test("isValidLongitude rejects out-of-range or non-number input", () => {
+  assert.equal(isValidLongitude(180.1), false);
+  assert.equal(isValidLongitude(-180.1), false);
+  assert.equal(isValidLongitude(Infinity), false);
+  assert.equal(isValidLongitude("−77"), false);
+});
+
+test("isValidContactId accepts a non-empty chat JID", () => {
+  assert.equal(isValidContactId("123456789@c.us"), true);
+});
+
+test("isValidContactId rejects empty/whitespace-only or non-string input", () => {
+  assert.equal(isValidContactId(""), false);
+  assert.equal(isValidContactId("   "), false);
+  assert.equal(isValidContactId(null), false);
+  assert.equal(isValidContactId(undefined), false);
 });

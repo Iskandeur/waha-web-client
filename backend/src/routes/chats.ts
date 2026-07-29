@@ -1,6 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import { GuardBlockedError, waha, type WahaFileInput } from "../waha-client.js";
 
+/** WAHA's `MessageLocationRequest` requires real-world coordinates (lat in [-90, 90], lng in
+ *  [-180, 180]) — validated here so a bad value 400s instead of surfacing as an opaque WAHA error. */
+export function isValidLatitude(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= -90 && n <= 90;
+}
+
+export function isValidLongitude(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= -180 && n <= 180;
+}
+
+/** The chat/contact JID being shared (e.g. `123456789@c.us`) — same shape as any other chatId. */
+export function isValidContactId(id: unknown): id is string {
+  return typeof id === "string" && id.trim().length > 0;
+}
+
 export function isValidFile(file: unknown): file is WahaFileInput {
   if (!file || typeof file !== "object") return false;
   const f = file as Record<string, unknown>;
@@ -22,12 +37,29 @@ export function isValidText(text: unknown): text is string {
   return typeof text === "string" && text.trim().length > 0;
 }
 
+/** How many messages we ask WAHA for per chat. WAHA's `GET .../messages` has no total-count or
+ *  "has more" field in its response (verified against the live instance's own OpenAPI spec) —
+ *  it's a bare array, capped at whatever `limit` we pass. So "did we get exactly `limit` back"
+ *  is the only real (non-guessed) signal we have that older history exists but wasn't fetched. */
+export const MESSAGES_FETCH_LIMIT = 100;
+
 export async function chatsRoutes(app: FastifyInstance) {
   app.get("/api/chats", async () => waha.chatsOverview());
 
   app.get<{ Params: { chatId: string } }>(
     "/api/chats/:chatId/messages",
-    async (req) => waha.getMessages(req.params.chatId),
+    async (req) => {
+      const messages = await waha.getMessages(req.params.chatId, undefined, MESSAGES_FETCH_LIMIT);
+      return {
+        messages,
+        limit: MESSAGES_FETCH_LIMIT,
+        // True = we hit the requested cap, so older messages likely exist but weren't loaded.
+        // False only means "WAHA returned fewer than we asked for this session" — it is NOT a
+        // guarantee this matches the complete history on the phone (WhatsApp Web/multi-device
+        // sessions don't always sync full pre-link history; see README "Live demo"/coverage doc).
+        truncated: messages.length >= MESSAGES_FETCH_LIMIT,
+      };
+    },
   );
 
   app.get<{ Params: { chatId: string } }>("/api/chats/:chatId/picture", async (req) =>
@@ -113,6 +145,55 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
     },
   );
+
+  app.post<{ Params: { chatId: string }; Body: { latitude: number; longitude: number; title?: string } }>(
+    "/api/chats/:chatId/location",
+    async (req, reply) => {
+      const { latitude, longitude, title } = req.body;
+      if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
+        reply.code(400);
+        return { error: "latitude/longitude must be valid coordinates" };
+      }
+      try {
+        return await waha.sendLocation(
+          req.params.chatId,
+          latitude,
+          longitude,
+          title?.trim() || "Shared location",
+        );
+      } catch (err) {
+        if (err instanceof GuardBlockedError) {
+          reply.code(429);
+          return { error: "blocked-by-guard", reason: err.reason };
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.post<{
+    Params: { chatId: string };
+    Body: { contactId: string; name?: string; phoneNumber?: string };
+  }>("/api/chats/:chatId/contact", async (req, reply) => {
+    const { contactId, name, phoneNumber } = req.body;
+    if (!isValidContactId(contactId)) {
+      reply.code(400);
+      return { error: "contactId is required" };
+    }
+    const whatsappId = contactId.replace(/@.*$/, "");
+    const fullName = name?.trim() || whatsappId;
+    try {
+      return await waha.sendContactVcard(req.params.chatId, [
+        { fullName, phoneNumber: phoneNumber?.trim() || whatsappId, whatsappId, vcard: null },
+      ]);
+    } catch (err) {
+      if (err instanceof GuardBlockedError) {
+        reply.code(429);
+        return { error: "blocked-by-guard", reason: err.reason };
+      }
+      throw err;
+    }
+  });
 
   app.put<{ Params: { chatId: string; messageId: string }; Body: { reaction: string } }>(
     "/api/chats/:chatId/messages/:messageId/reaction",
