@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "dist/bootstrap.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/bootstrap.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "test": "tsx --test src/guard/*.test.ts src/routes/*.test.ts src/*.test.ts"
+    "start": "node dist/bootstrap.js",
+    "setup": "tsx src/setup/cli.ts",
+    "test": "tsx --test src/guard/*.test.ts src/routes/*.test.ts src/setup/*.test.ts src/*.test.ts"
   },
   "dependencies": {
     "fastify": "^5.0.0",

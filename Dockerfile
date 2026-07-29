@@ -21,4 +21,4 @@ COPY --from=build /app/backend/dist backend/dist
 COPY --from=build /app/frontend/dist frontend/dist
 
 EXPOSE 8787
-CMD ["node", "backend/dist/server.js"]
+CMD ["node", "backend/dist/bootstrap.js"]

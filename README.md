@@ -45,7 +45,10 @@ whatsapp-sharp/
 │       │                    remember to apply per call site.
 │       ├── guard/           Anti-detection guard — see below.
 │       ├── routes/          sessions, chats, ai, guard (status/log introspection).
-│       └── ai/              The AI command bar's `claude -p` runner.
+│       ├── ai/              The AI command bar's `claude -p` runner.
+│       ├── setup/           `npm run setup` — detects an existing WAHA instance or points you
+│       │                    at the bundled one, see "Turnkey setup" below.
+│       └── bootstrap.ts     Loads `.env` (no `dotenv` dependency) before `server.ts` starts.
 ├── frontend/   Vite + React + TypeScript SPA, feature-parity-oriented: chat list with
 │               search/filters/avatars/unread, threaded chat view with read receipts,
 │               date separators and grouped bubbles, media placeholders (image/file/
@@ -133,21 +136,18 @@ raw Anthropic API key — same auth surface as the rest of the machine running i
 
 ## Getting started
 
-Requires Node.js ≥ 22, and a WAHA instance to point at (see below).
+Requires Node.js ≥ 22. You also need a WAHA instance to point at — you don't need to already
+have one: `npm run setup` figures that out for you (see below).
 
 ```bash
-# 1. Start a disposable WAHA instance for local testing (see Safety below —
-#    do NOT link this to a real/valued WhatsApp number)
-docker compose up -d
-
-# 2. Install dependencies
+# 1. Install dependencies
 npm install
 
-# 3. Configure the backend
-cp .env.example .env
-# edit .env: WAHA_BASE_URL, WAHA_API_KEY, WAHA_SESSION
+# 2. Configure — detects a WAHA instance already running on your machine, or tells you how to
+#    start the bundled disposable one; writes .env accordingly
+npm run setup
 
-# 4. Run backend and frontend (two terminals)
+# 3. Run backend and frontend (two terminals)
 npm run dev:backend
 npm run dev:frontend
 
@@ -157,6 +157,27 @@ npm test --workspace backend
 
 Then open the frontend (Vite prints the local URL, typically `http://localhost:5173`) and
 scan the WAHA session's QR code as usual to link a WhatsApp account to the test session.
+
+### Turnkey setup: `npm run setup`
+
+Most people running this for the first time don't already have a WAHA instance sitting around —
+`npm run setup` (`backend/src/setup/`) handles both cases so you don't have to know which one you
+are up front:
+
+- **You already have a WAHA instance running** (another project, something you started by hand)
+  — it's detected automatically (a lightweight probe against `/api/server/version` on
+  `localhost:3000`) and you're asked whether to point whatsapp-sharp at it. Nothing is changed
+  without your confirmation, and running it non-interactively (e.g. in a script) never touches
+  `.env` on its own — it just tells you what it found.
+- **Nothing detected — the common case.** [`docker-compose.yml`](docker-compose.yml) at the repo
+  root ships a disposable WAHA instance for exactly this (see Safety below — do NOT link it to a
+  real/valued WhatsApp number): `docker compose up -d`, then re-run `npm run setup` (or just
+  copy `.env.example` to `.env` by hand — its default `WAHA_BASE_URL` already matches the
+  bundled instance).
+
+`npm run setup` also copies `.env.example` to `.env` for you on first run if you don't have one
+yet. It never overwrites a `WAHA_BASE_URL` you've already set deliberately — detection only
+kicks in while that value is still the untouched `.env.example` default.
 
 ## Safety
 
