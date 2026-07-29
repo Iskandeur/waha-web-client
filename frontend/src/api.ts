@@ -9,7 +9,25 @@ export type MessageType =
   | "video"
   | "location"
   | "contact"
-  | "poll";
+  | "poll"
+  | "buttons"
+  | "list";
+
+export interface MessageButton {
+  id: string;
+  text: string;
+}
+
+export interface ListRow {
+  rowId: string;
+  title: string;
+  description?: string;
+}
+
+export interface ListSection {
+  title: string;
+  rows: ListRow[];
+}
 
 /** One option in a poll message, with the voter ids (JIDs) that picked it — mirrors what a
  *  `sendPollVote` roundtrip would let us reconstruct locally (WAHA gives us the vote events,
@@ -65,6 +83,10 @@ export interface Message {
   pollName?: string;
   pollOptions?: PollOption[];
   pollMultipleAnswers?: boolean;
+  footer?: string;
+  buttons?: MessageButton[];
+  listButtonText?: string;
+  listSections?: ListSection[];
   [key: string]: unknown;
 }
 
@@ -96,6 +118,10 @@ export const PIN_DURATIONS = {
 /** WhatsApp allows 2-12 poll options — mirrors the backend's `POLL_MIN_OPTIONS`/`POLL_MAX_OPTIONS`. */
 export const POLL_MIN_OPTIONS = 2;
 export const POLL_MAX_OPTIONS = 12;
+
+/** WhatsApp Business limits quick-reply buttons to 3 per message — mirrors the backend's
+ *  `BUTTONS_MAX`. */
+export const BUTTONS_MAX = 3;
 
 /** Either a remote URL or inline base64 data, both tagged with a mimetype — mirrors WAHA's
  *  `MessageImageRequest.file` shape (see backend `WahaFileInput`). */
@@ -345,6 +371,26 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     }).then((r) => json<{ ok: true }>(r)),
+
+  sendButtons: (chatId: string, body: string, buttons: MessageButton[], footer?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/buttons`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, buttons, footer }),
+    }).then((r) => json<Message>(r)),
+
+  sendList: (
+    chatId: string,
+    body: string,
+    buttonText: string,
+    sections: ListSection[],
+    footer?: string,
+  ) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/list`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, buttonText, sections, footer }),
+    }).then((r) => json<Message>(r)),
 
   checkNumberExists: (phone: string) =>
     fetch(`/api/contacts/check-exists?phone=${encodeURIComponent(phone)}`).then((r) =>

@@ -1,9 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  BUTTONS_MAX,
+  isValidButtons,
   isValidContactId,
   isValidFile,
   isValidLatitude,
+  isValidListSections,
   isValidLongitude,
   isValidOffset,
   isValidPinDuration,
@@ -175,4 +178,57 @@ test("isValidOffset rejects negative, non-integer, or non-number input", () => {
   assert.equal(isValidOffset("100"), false);
   assert.equal(isValidOffset(null), false);
   assert.equal(isValidOffset(undefined), false);
+});
+
+test("isValidButtons accepts 1-3 buttons with a non-empty id and text", () => {
+  assert.equal(isValidButtons([{ id: "yes", text: "Yes" }]), true);
+  assert.equal(
+    isValidButtons([
+      { id: "yes", text: "Yes" },
+      { id: "no", text: "No" },
+      { id: "maybe", text: "Maybe" },
+    ]),
+    true,
+  );
+  assert.equal(BUTTONS_MAX, 3);
+});
+
+test("isValidButtons rejects too few, too many, or malformed entries", () => {
+  assert.equal(isValidButtons([]), false);
+  assert.equal(
+    isValidButtons([
+      { id: "a", text: "A" },
+      { id: "b", text: "B" },
+      { id: "c", text: "C" },
+      { id: "d", text: "D" },
+    ]),
+    false,
+  );
+  assert.equal(isValidButtons([{ id: "", text: "Yes" }]), false);
+  assert.equal(isValidButtons([{ id: "yes", text: "" }]), false);
+  assert.equal(isValidButtons([{ text: "Yes" }]), false);
+  assert.equal(isValidButtons("not-an-array"), false);
+  assert.equal(isValidButtons(null), false);
+});
+
+test("isValidListSections accepts a non-empty section with a non-empty row", () => {
+  assert.equal(
+    isValidListSections([{ title: "Options", rows: [{ rowId: "a", title: "Option A" }] }]),
+    true,
+  );
+  assert.equal(
+    isValidListSections([
+      { title: "Options", rows: [{ rowId: "a", title: "Option A", description: "desc" }] },
+    ]),
+    true,
+  );
+});
+
+test("isValidListSections rejects empty sections/rows or malformed entries", () => {
+  assert.equal(isValidListSections([]), false);
+  assert.equal(isValidListSections([{ title: "Options", rows: [] }]), false);
+  assert.equal(isValidListSections([{ title: "", rows: [{ rowId: "a", title: "A" }] }]), false);
+  assert.equal(isValidListSections([{ title: "Options", rows: [{ title: "A" }] }]), false);
+  assert.equal(isValidListSections("not-an-array"), false);
+  assert.equal(isValidListSections(null), false);
 });

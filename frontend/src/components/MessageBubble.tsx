@@ -91,6 +91,43 @@ function MessageContent({ m, onVotePoll }: { m: Message; onVotePoll?: (votes: st
       );
     case "poll":
       return <PollContent m={m} onVotePoll={onVotePoll} />;
+    case "buttons":
+      return (
+        <div className="message-media message-media-buttons">
+          <div className="message-body">{m.body}</div>
+          {m.footer && <div className="message-interactive-footer">{m.footer}</div>}
+          <div className="message-interactive-buttons">
+            {(m.buttons ?? []).map((b) => (
+              <button key={b.id} type="button" className="message-interactive-button" disabled>
+                {b.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    case "list":
+      return (
+        <div className="message-media message-media-list">
+          <div className="message-body">{m.body}</div>
+          {m.footer && <div className="message-interactive-footer">{m.footer}</div>}
+          {(m.listSections ?? []).map((section) => (
+            <div key={section.title} className="message-list-section">
+              <div className="message-list-section-title">{section.title}</div>
+              {section.rows.map((row) => (
+                <div key={row.rowId} className="message-list-row">
+                  <div className="message-list-row-title">{row.title}</div>
+                  {row.description && (
+                    <div className="message-list-row-description">{row.description}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+          <button type="button" className="message-interactive-button" disabled>
+            {m.listButtonText || "View options"}
+          </button>
+        </div>
+      );
     default:
       return <div className="message-body">{m.body}</div>;
   }

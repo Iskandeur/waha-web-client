@@ -1,5 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { GuardBlockedError, waha, type WahaFileInput } from "../waha-client.js";
+import {
+  GuardBlockedError,
+  waha,
+  type WahaButton,
+  type WahaFileInput,
+  type WahaListSection,
+} from "../waha-client.js";
 
 /** WAHA's `MessageLocationRequest` requires real-world coordinates (lat in [-90, 90], lng in
  *  [-180, 180]) — validated here so a bad value 400s instead of surfacing as an opaque WAHA error. */
@@ -68,6 +74,44 @@ export const MESSAGES_FETCH_LIMIT = 100;
  *  surfacing as an opaque WAHA error or, worse, silently coercing to `NaN`/0. */
 export function isValidOffset(offset: unknown): offset is number {
   return typeof offset === "number" && Number.isInteger(offset) && offset >= 0;
+}
+
+export const BUTTONS_MAX = 3;
+
+/** WhatsApp Business limits quick-reply buttons to 3 per message — WAHA passes the array
+ *  straight through, so a bad value is caught here rather than surfacing as an opaque WAHA 4xx. */
+export function isValidButtons(buttons: unknown): buttons is WahaButton[] {
+  if (!Array.isArray(buttons) || buttons.length < 1 || buttons.length > BUTTONS_MAX) return false;
+  return buttons.every(
+    (b) =>
+      b &&
+      typeof b === "object" &&
+      typeof (b as WahaButton).id === "string" &&
+      (b as WahaButton).id.trim().length > 0 &&
+      typeof (b as WahaButton).text === "string" &&
+      (b as WahaButton).text.trim().length > 0,
+  );
+}
+
+/** At least one section with at least one row — WAHA's `sendList` schema requires both nested
+ *  arrays to be non-empty. */
+export function isValidListSections(sections: unknown): sections is WahaListSection[] {
+  if (!Array.isArray(sections) || sections.length === 0) return false;
+  return sections.every((s) => {
+    if (!s || typeof s !== "object") return false;
+    const section = s as WahaListSection;
+    if (typeof section.title !== "string" || section.title.trim().length === 0) return false;
+    if (!Array.isArray(section.rows) || section.rows.length === 0) return false;
+    return section.rows.every(
+      (r) =>
+        r &&
+        typeof r === "object" &&
+        typeof r.rowId === "string" &&
+        r.rowId.trim().length > 0 &&
+        typeof r.title === "string" &&
+        r.title.trim().length > 0,
+    );
+  });
 }
 
 export async function chatsRoutes(app: FastifyInstance) {
@@ -402,4 +446,56 @@ export async function chatsRoutes(app: FastifyInstance) {
       return { ok: true };
     },
   );
+
+  app.post<{
+    Params: { chatId: string };
+    Body: { body: string; buttons: WahaButton[]; footer?: string };
+  }>("/api/chats/:chatId/buttons", async (req, reply) => {
+    const { body, buttons, footer } = req.body;
+    if (!isValidText(body)) {
+      reply.code(400);
+      return { error: "body is required" };
+    }
+    if (!isValidButtons(buttons)) {
+      reply.code(400);
+      return { error: `buttons must be 1-${BUTTONS_MAX} entries with a non-empty id and text` };
+    }
+    try {
+      return await waha.sendButtons(req.params.chatId, body, buttons, footer);
+    } catch (err) {
+      if (err instanceof GuardBlockedError) {
+        reply.code(429);
+        return { error: "blocked-by-guard", reason: err.reason };
+      }
+      throw err;
+    }
+  });
+
+  app.post<{
+    Params: { chatId: string };
+    Body: { body: string; buttonText: string; sections: WahaListSection[]; footer?: string };
+  }>("/api/chats/:chatId/list", async (req, reply) => {
+    const { body, buttonText, sections, footer } = req.body;
+    if (!isValidText(body)) {
+      reply.code(400);
+      return { error: "body is required" };
+    }
+    if (!isValidText(buttonText)) {
+      reply.code(400);
+      return { error: "buttonText is required" };
+    }
+    if (!isValidListSections(sections)) {
+      reply.code(400);
+      return { error: "sections must be a non-empty array of { title, rows: [{ rowId, title }] }" };
+    }
+    try {
+      return await waha.sendList(req.params.chatId, body, buttonText, sections, footer);
+    } catch (err) {
+      if (err instanceof GuardBlockedError) {
+        reply.code(429);
+        return { error: "blocked-by-guard", reason: err.reason };
+      }
+      throw err;
+    }
+  });
 }

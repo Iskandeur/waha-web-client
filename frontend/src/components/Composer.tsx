@@ -1,12 +1,14 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useRef, useState } from "react";
-import type { Contact, OutgoingFile } from "../api.js";
+import type { Contact, ListSection, MessageButton, OutgoingFile } from "../api.js";
 import { ContactPicker } from "./ContactPicker.js";
+import { InteractiveComposer } from "./InteractiveComposer.js";
 import { LocationPicker } from "./LocationPicker.js";
 import { PollComposer } from "./PollComposer.js";
 import {
   BarChartIcon,
   FileIcon,
+  ListIcon,
   MapPinIcon,
   MicIcon,
   PaperclipIcon,
@@ -39,6 +41,8 @@ export function Composer({
   onSendPoll,
   onSendLocation,
   onShareContact,
+  onSendButtons,
+  onSendList,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -50,12 +54,15 @@ export function Composer({
   onSendPoll: (name: string, options: string[], multipleAnswers: boolean) => void;
   onSendLocation: (latitude: number, longitude: number, name?: string) => void;
   onShareContact: (contact: Contact) => void;
+  onSendButtons: (body: string, buttons: MessageButton[], footer?: string) => void;
+  onSendList: (body: string, buttonText: string, sections: ListSection[], footer?: string) => void;
 }) {
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
+  const [interactiveComposerOpen, setInteractiveComposerOpen] = useState(false);
 
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -240,6 +247,15 @@ export function Composer({
         >
           <UserIcon size={20} />
         </button>
+        <button
+          type="button"
+          className="composer-icon-btn"
+          aria-label="Send an interactive message"
+          title="Send buttons or a list"
+          onClick={() => setInteractiveComposerOpen(true)}
+        >
+          <ListIcon size={20} />
+        </button>
         {contactPickerOpen && (
           <ContactPicker
             title="Share a contact"
@@ -258,6 +274,13 @@ export function Composer({
         )}
         {pollComposerOpen && (
           <PollComposer onSubmit={onSendPoll} onClose={() => setPollComposerOpen(false)} />
+        )}
+        {interactiveComposerOpen && (
+          <InteractiveComposer
+            onSendButtons={onSendButtons}
+            onSendList={onSendList}
+            onClose={() => setInteractiveComposerOpen(false)}
+          />
         )}
         <input
           className="composer-input"

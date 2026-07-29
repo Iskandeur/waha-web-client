@@ -1315,6 +1315,67 @@ input {
   margin-top: 6px;
 }
 
+/* ---- Interactive messages (buttons / list) ---- */
+
+.message-media-buttons,
+.message-media-list {
+  min-width: 220px;
+}
+
+.message-interactive-footer {
+  color: #8696a0;
+  font-size: 0.78em;
+  margin-top: 4px;
+}
+
+.message-interactive-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.message-interactive-button {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  background: #1f2c34;
+  color: #00a884;
+  font-size: 0.88em;
+  text-align: center;
+}
+
+.message-interactive-button:disabled {
+  cursor: default;
+}
+
+.message-list-section {
+  margin-top: 8px;
+}
+
+.message-list-section-title {
+  font-size: 0.78em;
+  color: #8696a0;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.message-list-row {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #1f2c34;
+  margin-bottom: 4px;
+}
+
+.message-list-row-title {
+  font-size: 0.9em;
+}
+
+.message-list-row-description {
+  font-size: 0.78em;
+  color: #8696a0;
+}
+
 /* ---- Location picker ---- */
 
 .location-picker {

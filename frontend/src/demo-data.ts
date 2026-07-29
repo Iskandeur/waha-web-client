@@ -6,7 +6,9 @@ import type {
   GroupJoinInfo,
   GroupParticipant,
   Label,
+  ListSection,
   Message,
+  MessageButton,
   MessagesResult,
   MessageStatus,
   MessageType,
@@ -546,6 +548,59 @@ export const demoApi = {
     const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
     if (message) message.body = text;
     return delay({ ok: true as const });
+  },
+
+  sendButtons: (chatId: string, body: string, buttons: MessageButton[], footer?: string) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "buttons",
+      body,
+      footer,
+      buttons,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = body;
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  sendList: (
+    chatId: string,
+    body: string,
+    buttonText: string,
+    sections: ListSection[],
+    footer?: string,
+  ) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "list",
+      body,
+      footer,
+      listButtonText: buttonText,
+      listSections: sections,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = body;
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
   },
 
   // No real WAHA behind the demo — treat any string with at least 8 digits as "on WhatsApp",

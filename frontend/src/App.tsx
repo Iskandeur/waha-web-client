@@ -5,7 +5,9 @@ import {
   PIN_DURATIONS,
   type Chat,
   type Contact,
+  type ListSection,
   type Message,
+  type MessageButton,
   type OutgoingFile,
 } from "./api.js";
 import { ChatList } from "./components/ChatList.js";
@@ -159,6 +161,31 @@ export default function App() {
     if (!selectedId) return;
     try {
       await api.votePoll(selectedId, messageId, votes);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendButtons(body: string, buttons: MessageButton[], footer?: string) {
+    if (!selectedId) return;
+    try {
+      await api.sendButtons(selectedId, body, buttons, footer);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendList(
+    body: string,
+    buttonText: string,
+    sections: ListSection[],
+    footer?: string,
+  ) {
+    if (!selectedId) return;
+    try {
+      await api.sendList(selectedId, body, buttonText, sections, footer);
       await loadMessages(selectedId);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
@@ -472,6 +499,8 @@ export default function App() {
                 onSendPoll={handleSendPoll}
                 onSendLocation={handleSendLocation}
                 onShareContact={handleShareContact}
+                onSendButtons={handleSendButtons}
+                onSendList={handleSendList}
               />
             </>
           ) : (
