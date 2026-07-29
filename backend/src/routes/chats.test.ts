@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isValidFile, isValidPinDuration, PIN_DURATIONS } from "./chats.js";
+import { isValidFile, isValidPinDuration, isValidText, PIN_DURATIONS } from "./chats.js";
 
 test("isValidFile accepts a remote-URL file (mimetype + url)", () => {
   assert.equal(isValidFile({ mimetype: "image/jpeg", url: "https://example.com/x.jpg" }), true);
@@ -46,4 +46,19 @@ test("isValidPinDuration rejects non-number input", () => {
   assert.equal(isValidPinDuration("86400"), false);
   assert.equal(isValidPinDuration(null), false);
   assert.equal(isValidPinDuration(undefined), false);
+});
+
+test("isValidText accepts non-empty text (shared by send + edit routes)", () => {
+  assert.equal(isValidText("hello"), true);
+});
+
+test("isValidText rejects empty or whitespace-only text", () => {
+  assert.equal(isValidText(""), false);
+  assert.equal(isValidText("   "), false);
+});
+
+test("isValidText rejects non-string input", () => {
+  assert.equal(isValidText(null), false);
+  assert.equal(isValidText(undefined), false);
+  assert.equal(isValidText(42), false);
 });

@@ -17,6 +17,11 @@ export function isValidPinDuration(duration: unknown): duration is number {
   return typeof duration === "number" && (PIN_DURATIONS as readonly number[]).includes(duration);
 }
 
+/** Shared by every route that requires non-empty message text (send, edit). */
+export function isValidText(text: unknown): text is string {
+  return typeof text === "string" && text.trim().length > 0;
+}
+
 export async function chatsRoutes(app: FastifyInstance) {
   app.get("/api/chats", async () => waha.chatsOverview());
 
@@ -33,7 +38,7 @@ export async function chatsRoutes(app: FastifyInstance) {
     "/api/chats/:chatId/messages",
     async (req, reply) => {
       const { text } = req.body;
-      if (!text || !text.trim()) {
+      if (!isValidText(text)) {
         reply.code(400);
         return { error: "text is required" };
       }
@@ -172,6 +177,47 @@ export async function chatsRoutes(app: FastifyInstance) {
     "/api/chats/:chatId/messages/:messageId/unpin",
     async (req) => {
       await waha.unpinMessage(req.params.chatId, req.params.messageId);
+      return { ok: true };
+    },
+  );
+
+  app.post<{ Params: { chatId: string } }>("/api/chats/:chatId/archive", async (req) => {
+    await waha.archiveChat(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.post<{ Params: { chatId: string } }>("/api/chats/:chatId/unarchive", async (req) => {
+    await waha.unarchiveChat(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.delete<{ Params: { chatId: string } }>("/api/chats/:chatId", async (req) => {
+    await waha.deleteChat(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.delete<{ Params: { chatId: string } }>("/api/chats/:chatId/messages", async (req) => {
+    await waha.clearChatMessages(req.params.chatId);
+    return { ok: true };
+  });
+
+  app.delete<{ Params: { chatId: string; messageId: string } }>(
+    "/api/chats/:chatId/messages/:messageId",
+    async (req) => {
+      await waha.deleteMessage(req.params.chatId, req.params.messageId);
+      return { ok: true };
+    },
+  );
+
+  app.put<{ Params: { chatId: string; messageId: string }; Body: { text: string } }>(
+    "/api/chats/:chatId/messages/:messageId",
+    async (req, reply) => {
+      const { text } = req.body;
+      if (!isValidText(text)) {
+        reply.code(400);
+        return { error: "text is required" };
+      }
+      await waha.editMessage(req.params.chatId, req.params.messageId, text);
       return { ok: true };
     },
   );

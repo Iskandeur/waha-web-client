@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { config } from "./config.js";
 import { sessionsRoutes } from "./routes/sessions.js";
 import { chatsRoutes } from "./routes/chats.js";
+import { contactsRoutes } from "./routes/contacts.js";
 import { aiRoutes } from "./routes/ai.js";
 import { guardRoutes } from "./routes/guard.js";
 
@@ -14,6 +15,7 @@ app.get("/api/health", async () => ({ ok: true }));
 
 await app.register(sessionsRoutes);
 await app.register(chatsRoutes);
+await app.register(contactsRoutes);
 await app.register(aiRoutes);
 await app.register(guardRoutes);
 
