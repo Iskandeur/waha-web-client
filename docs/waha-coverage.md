@@ -46,12 +46,12 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
 | `POST /api/sendText` (+`GET` variant) | Send text | **done** | `routes/chats.ts`, via `waha.sendText` (typing simulation + full send-guard). |
-| `POST /api/sendImage` | Send an image | **done (this job)** | New `waha.sendImage`; see below. |
-| `PUT /api/reaction` | React to a message with an emoji | **done (this job)** | New `waha.setReaction`; see below. |
-| `PUT /api/star` | Star / unstar a message | **done (this job)** | New `waha.setStar`; see below. |
-| `POST /api/sendFile` | Send an arbitrary file/document | **done (this job)** | New `waha.sendFile`; see below. |
+| `POST /api/sendImage` | Send an image | **done** | New `waha.sendImage`. |
+| `PUT /api/reaction` | React to a message with an emoji | **done** | New `waha.setReaction`. |
+| `PUT /api/star` | Star / unstar a message | **done** | New `waha.setStar`. |
+| `POST /api/sendFile` | Send an arbitrary file/document | **done** | New `waha.sendFile`. |
 | `POST /api/sendVoice` | Send a voice note | todo | Needs an in-browser recorder + `media/convert/voice`; bigger UI lift, deferred. |
-| `POST /api/sendVideo` | Send a video | **done (this job)** | New `waha.sendVideo`; see below. |
+| `POST /api/sendVideo` | Send a video | **done** | New `waha.sendVideo`. |
 | `POST /api/sendLocation` | Share a location (lat/lng pin) | todo | Needs a map picker; moderate UI cost. |
 | `POST /api/sendContactVcard` | Share a contact card | todo | Needs a contact picker UI. |
 | `POST /api/sendPoll`, `POST /api/sendPollVote` | Create/vote on a poll | todo | Multi-field composer UI; moderate complexity. |
@@ -60,7 +60,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `POST /api/forwardMessage` | Forward a message to another chat | todo | Needs a chat picker; valuable but not core-MVP. |
 | `POST /api/sendSeen` | Mark a specific message as seen | todo | Overlaps with chat-level `messages/read` (below); revisit together. |
 | `POST /api/reply` | Deprecated alias for reply-to on send | **out of scope** | WAHA itself marks this deprecated in favor of the `reply_to` field on `sendText`/etc. |
-| `GET /api/checkNumberStatus` | Validate a phone number is on WhatsApp | todo | Needed for a real "start new chat by number" flow. |
+| `GET contacts/check-exists` (`checkNumberStatus`) | Validate a phone number is on WhatsApp | **done (this job)** | New `waha.checkNumberExists`; see below. |
 | `GET /{session}/new-message-id` | Pre-generate a message id | **out of scope** | Internal plumbing helper, not user-facing. |
 
 ## Chats
@@ -70,14 +70,15 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `GET chats/overview` (+`POST` batch variant) | Chat list (name, avatar, last message) | **done** (GET) / todo (POST batch) | `routes/chats.ts`; the `POST` batch form only matters at very large `ids` lists, low priority. |
 | `GET chats` | Raw chat list (session-scoped, no overview enrichment) | dead code | `waha.listChats()` exists in `waha-client.ts` but no route/UI calls it — either wire it to something or remove; flagged for a follow-up cleanup, not a feature gap. |
 | `GET chats/{chatId}/messages` | Load message history | **done** | `routes/chats.ts` |
-| `GET chats/{chatId}/picture` | Chat/contact avatar image | **done (this job)** | New `waha.getChatPicture`; see below. |
-| `DELETE chats/{chatId}` | Delete a whole conversation | todo | Destructive, needs a confirm dialog; deferred. |
-| `DELETE chats/{chatId}/messages` | Clear all messages in a chat | todo | Same destructive-action caution as above. |
-| `POST chats/{chatId}/messages/read` | Mark chat as read | **done (this job)** | New `waha.markChatRead`; see below. |
-| `GET/DELETE/PUT chats/{chatId}/messages/{messageId}` | Get/delete/edit a single message | todo | Message-level moderation UI; moderate complexity. |
-| `POST .../pin`, `POST .../unpin` | Pin/unpin a message | **done (this job)** | New `waha.pinMessage`/`waha.unpinMessage`; see below. |
-| `POST chats/{chatId}/archive`, `unarchive` | Inbox management (archive) | todo | Valuable inbox triage feature, deferred. |
-| `POST chats/{chatId}/unread` | Mark chat as unread | **done (this job)** | New `waha.markChatUnread`; see below. |
+| `GET chats/{chatId}/picture` | Chat/contact avatar image | **done** | New `waha.getChatPicture`. |
+| `DELETE chats/{chatId}` | Delete a whole conversation | **done (this job)** | New `waha.deleteChat`; confirm dialog client-side (`window.confirm`); see below. |
+| `DELETE chats/{chatId}/messages` | Clear all messages in a chat | **done (this job)** | New `waha.clearChatMessages`; same confirm-dialog caution as delete; see below. |
+| `POST chats/{chatId}/messages/read` | Mark chat as read | **done** | New `waha.markChatRead`. |
+| `GET chats/{chatId}/messages/{messageId}` | Get a single message | **superseded** | Redundant with the existing full-history `GET chats/{chatId}/messages` the thread already loads; no standalone value added. |
+| `DELETE/PUT chats/{chatId}/messages/{messageId}` | Delete/edit a single message | **done (this job)** | New `waha.deleteMessage`/`waha.editMessage`; see below. |
+| `POST .../pin`, `POST .../unpin` | Pin/unpin a message | **done** | New `waha.pinMessage`/`waha.unpinMessage`. |
+| `POST chats/{chatId}/archive`, `unarchive` | Inbox management (archive) | **done (this job)** | New `waha.archiveChat`/`waha.unarchiveChat`; see below. |
+| `POST chats/{chatId}/unread` | Mark chat as unread | **done** | New `waha.markChatUnread`. |
 
 ## Calls
 
@@ -107,7 +108,8 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET contacts/all`, `GET contacts`, `GET contacts/{id}` (session-scoped) | Contact list / lookup | todo | Needed for a real "start new chat" flow (pairs with `checkNumberStatus` above). |
+| `GET contacts/all` | Contact list | **done (this job)** | New `waha.listContacts` (`routes/contacts.ts`) — no picker UI wired to it yet (see "What's next"), but the backend/route is ready for one. |
+| `GET contacts`, `GET contacts/{id}` (session-scoped) | Single-contact lookup | todo | Only useful once there's a contacts picker UI to call it from. |
 | `GET contacts/about` | Contact's "about" text | todo | Small profile-panel addition. |
 | `GET contacts/profile-picture` | Contact avatar (non-chat-scoped variant) | **superseded** | Covered by the chat-scoped `chats/{chatId}/picture` we implemented this job — for a 1:1 DM, `chatId` *is* the contact's JID, so one endpoint serves both. |
 | `POST contacts/block`, `POST contacts/unblock` | Block/unblock a contact | todo | Needs a confirm dialog; moderate priority. |
@@ -129,7 +131,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET presence/{chatId}`, `POST presence/{chatId}/subscribe` | Show peer online/typing/last-seen status | **done (this job)** | New `waha.getPresence`/`waha.subscribePresence`; see below. |
+| `GET presence/{chatId}`, `POST presence/{chatId}/subscribe` | Show peer online/typing/last-seen status | **done** | New `waha.getPresence`/`waha.subscribePresence`. |
 | `POST presence`, `GET presence` | Set our own global presence / read all-chats presence in one call | todo | We already emit *typing* presence per-chat via `startTyping`/`stopTyping`; a session-wide online/offline toggle and the batch "all chats" read are secondary to the per-chat presence just added. |
 
 ## Screenshot / debug
@@ -214,12 +216,48 @@ constrained body field), and mirrored in `demoApi` so the public demo keeps work
 real WAHA calls — including `getPresence`, which derives a plausible online/offline+lastSeen
 value from the existing canned `Chat.presence` text rather than being a hardcoded stub.
 
+## Added this job (v5 pass)
+
+Eight endpoints, continuing straight down the previous job's "what's next" list in priority
+order — start-new-chat-by-number first (highest product value), then message/chat
+moderation, then inbox triage:
+
+1. **Start a new chat by phone number** — `waha.checkNumberExists` → `GET
+   contacts/check-exists` (WAHA's real path; the coverage doc used to call this
+   `checkNumberStatus`, which doesn't exist as a route — corrected here), `waha.listContacts` →
+   `GET contacts/all` (routed, no picker UI yet). Wired into the chat list: typing a
+   phone-number-shaped query with no matching chat shows a "Start chat with …" button that
+   validates the number and either jumps to the existing chat or seeds a fresh message-less one
+   (the first real send is what actually creates it on WAHA's side).
+2. **Delete / edit a single message** — `waha.deleteMessage` → `DELETE
+   .../messages/{messageId}`, `waha.editMessage` → `PUT .../messages/{messageId}` (WhatsApp's
+   own "delete for everyone" / edit-message limits — own messages only, edit is text-only — are
+   mirrored client-side as a UX guard; WAHA/WhatsApp still enforce the real constraint
+   server-side). New edit/delete buttons in the message hover toolbar (`fromMe` messages only,
+   edit only for `type: "text"`); edit opens an inline input in place of the bubble, delete asks
+   `window.confirm` first.
+3. **Archive / unarchive a chat** — `waha.archiveChat` → `POST .../archive`,
+   `waha.unarchiveChat` → `POST .../unarchive`. New "Archived" filter tab in the chat list
+   (archived chats are hidden from All/Unread/Groups, same as WhatsApp's own inbox behavior);
+   toggle lives in a new dropdown menu on `ChatHeader`'s previously-decorative "more" button.
+4. **Delete a chat / clear its messages** — `waha.deleteChat` → `DELETE chats/{chatId}`,
+   `waha.clearChatMessages` → `DELETE chats/{chatId}/messages`. Same `ChatHeader` dropdown menu,
+   both behind `window.confirm` (no existing modal-dialog component in this codebase, and
+   building one just for two confirm prompts would be its own scope creep).
+
+All eight: implemented in `backend/src/waha-client.ts` behind `wahaFetch`, routed in
+`backend/src/routes/chats.ts` and a new `backend/src/routes/contacts.ts`, and mirrored in
+`demoApi` so the public demo keeps working with zero real WAHA calls. Extracted two shared
+validators while touching this code — `isValidText` (send/edit routes) and `isValidPhone`
+(contacts route) — with their own unit tests, matching the existing `isValidFile`/
+`isValidPinDuration` pattern. 9 new backend tests (31 total, was 22).
+
 ## What's next (highest-value gaps, not done this job)
 
-In rough priority order for a future pass: `checkNumberStatus` + a contacts list, for a real
-"start new chat by number" flow; single-message get/delete/edit and chat delete/clear (all need
-a confirm-dialog UX for the destructive ones); archive/unarchive for inbox triage; `sendVoice`
-(needs an in-browser recorder) and `sendLocation`/`sendContactVcard` (need picker UI); labels;
-group *management* UI (group messaging already works — it's just another `chatId`); a Settings
-screen for profile (name/about/avatar). Also flagged, not a feature gap: `waha.listChats()` is
-still dead code (no route/UI calls it) — wire it up or remove it.
+In rough priority order for a future pass: a contacts-picker UI on top of the now-implemented
+`waha.listContacts`; `sendVoice` (needs an in-browser recorder) and
+`sendLocation`/`sendContactVcard` (need picker UI); labels; group *management* UI (group
+messaging already works — it's just another `chatId`); a Settings screen for profile
+(name/about/avatar). Also flagged, not a feature gap: `waha.listChats()` (the *other* one —
+the raw non-overview chat list) is still dead code (no route/UI calls it) — wire it up or
+remove it.

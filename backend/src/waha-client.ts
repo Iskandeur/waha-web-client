@@ -39,6 +39,21 @@ export interface WahaPresence {
   }>;
 }
 
+export interface WahaContact {
+  id: string;
+  number?: string;
+  name?: string;
+  pushname?: string;
+  shortName?: string;
+  isMyContact?: boolean;
+  [key: string]: unknown;
+}
+
+export interface WahaNumberStatus {
+  numberExists: boolean;
+  chatId: string | null;
+}
+
 export class WahaError extends Error {
   constructor(
     public status: number,
@@ -203,6 +218,26 @@ export const waha = {
       { kind: "read", session, chatId },
     ),
 
+  /** Unlike every other endpoint here, WAHA scopes this by `?session=` query param rather
+   *  than a `/{session}/` path prefix — that's WAHA's own inconsistency, not ours. */
+  listContacts: (session = config.wahaSession) =>
+    wahaFetch<WahaContact[]>(
+      `/api/contacts/all?session=${encodeURIComponent(session)}`,
+      {},
+      { kind: "read", session },
+    ),
+
+  /** Backs the "start a new chat by phone number" flow: confirms the number is on WhatsApp
+   *  and resolves its `chatId` before the UI ever tries to message it. WAHA's own endpoint is
+   *  named `contacts/check-exists`; we surface it as `checkNumberExists` since that's the
+   *  question the product actually asks. */
+  checkNumberExists: (phone: string, session = config.wahaSession) =>
+    wahaFetch<WahaNumberStatus>(
+      `/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(session)}`,
+      {},
+      { kind: "read", session },
+    ),
+
   /** Mirrors WhatsApp's own read receipt — sends a "seen" signal to the peer, same as
    *  opening the chat in the official client. Not a spam-relevant action so it skips
    *  `sendGuarded` (like reaction/star below) but still runs through `wahaFetch`. */
@@ -217,6 +252,43 @@ export const waha = {
     wahaFetch<void>(
       `/api/${session}/chats/${encodeURIComponent(chatId)}/unread`,
       { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  /** Inbox triage: hides a chat from the main list without deleting anything (WhatsApp's own
+   *  "Archive" swipe action). Sending a new message to an archived chat un-archives it on
+   *  WhatsApp's side too, but we don't need to model that here — the next `listChats`/
+   *  `chatsOverview` read reflects reality either way. */
+  archiveChat: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/archive`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  unarchiveChat: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/unarchive`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  /** Destructive: deletes the whole conversation (WAHA's own "delete chat" — mirrors long-press
+   *  "Delete chat" in the WhatsApp app). The route requires a confirm step client-side; this
+   *  client function itself performs no confirmation, same as every other `waha.*` call. */
+  deleteChat: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}`,
+      { method: "DELETE" },
+      { kind: "send", session, chatId },
+    ),
+
+  /** Destructive but lighter than `deleteChat`: wipes the message history, keeps the chat
+   *  (and its chat-list entry) around — WhatsApp's "Clear chat". */
+  clearChatMessages: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages`,
+      { method: "DELETE" },
       { kind: "send", session, chatId },
     ),
 
@@ -333,6 +405,31 @@ export const waha = {
     wahaFetch<void>(
       `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/unpin`,
       { method: "POST", body: JSON.stringify({}) },
+      { kind: "send", session, chatId },
+    ),
+
+  /** "Delete for everyone" — WhatsApp only allows this on your own messages, and only within
+   *  its own time window; WAHA/WhatsApp itself enforces that, we don't duplicate the check
+   *  here. The route restricts this to `fromMe` messages client-side as a UX guard, not a
+   *  security boundary (WAHA would reject it anyway). */
+  deleteMessage: (chatId: string, messageId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`,
+      { method: "DELETE" },
+      { kind: "send", session, chatId },
+    ),
+
+  /** Edits the text (or caption) of a message already sent — same own-message/time-window
+   *  constraint as `deleteMessage`. */
+  editMessage: (
+    chatId: string,
+    messageId: string,
+    text: string,
+    session = config.wahaSession,
+  ) =>
+    wahaFetch<void>(
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`,
+      { method: "PUT", body: JSON.stringify({ text }) },
       { kind: "send", session, chatId },
     ),
 };
