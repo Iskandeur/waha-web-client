@@ -52,8 +52,8 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `POST /api/sendFile` | Send an arbitrary file/document | **done** | New `waha.sendFile`. |
 | `POST /api/sendVoice` | Send a voice note | todo | Needs an in-browser recorder + `media/convert/voice`; bigger UI lift, deferred. |
 | `POST /api/sendVideo` | Send a video | **done** | New `waha.sendVideo`. |
-| `POST /api/sendLocation` | Share a location (lat/lng pin) | todo | Needs a map picker; moderate UI cost. |
-| `POST /api/sendContactVcard` | Share a contact card | todo | Needs a contact picker UI. |
+| `POST /api/sendLocation` | Share a location (lat/lng pin) | **done (this job)** | New `waha.sendLocation`; browser Geolocation API ("share my current location"), no map-search picker yet — see below. |
+| `POST /api/sendContactVcard` | Share a contact card | **done (this job)** | New `waha.sendContactVcard`; reuses the new contacts picker — see below. |
 | `POST /api/sendPoll`, `POST /api/sendPollVote` | Create/vote on a poll | todo | Multi-field composer UI; moderate complexity. |
 | `POST /api/sendButtons`, `POST /api/sendList`, `POST send/buttons/reply` | Interactive button/list messages | todo | WhatsApp Business–style messaging; niche for a personal client, low priority. |
 | `POST send/link-custom-preview`, `POST /api/sendLinkPreview` | Rich link previews with custom title/image | todo | Nice-to-have polish once basic sending is richer. |
@@ -69,7 +69,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 |---|---|---|---|
 | `GET chats/overview` (+`POST` batch variant) | Chat list (name, avatar, last message) | **done** (GET) / todo (POST batch) | `routes/chats.ts`; the `POST` batch form only matters at very large `ids` lists, low priority. |
 | `GET chats` | Raw chat list (session-scoped, no overview enrichment) | **removed (this job)** | `waha.listChats()` was dead code (no route/UI ever called it, fully superseded by `chatsOverview`) — deleted rather than wired up, per the previous job's flag. |
-| `GET chats/{chatId}/messages` | Load message history | **done** | `routes/chats.ts` |
+| `GET chats/{chatId}/messages` | Load message history | **done**, transparency added **(this job)** | `routes/chats.ts`; response now wraps the array with `{ limit, truncated }` — see "History transparency" below. |
 | `GET chats/{chatId}/picture` | Chat/contact avatar image | **done** | New `waha.getChatPicture`. |
 | `DELETE chats/{chatId}` | Delete a whole conversation | **done (this job)** | New `waha.deleteChat`; confirm dialog client-side (`window.confirm`); see below. |
 | `DELETE chats/{chatId}/messages` | Clear all messages in a chat | **done (this job)** | New `waha.clearChatMessages`; same confirm-dialog caution as delete; see below. |
@@ -102,14 +102,14 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET/POST labels`, `PUT/DELETE labels/{id}`, `GET/PUT labels/chats/{chatId}` | Organize chats with labels (WhatsApp Business feature) | **done (this job)** | New `waha.listLabels`/`createLabel`/`updateLabel`/`deleteLabel`/`getChatLabels`/`setChatLabels`; see below. |
+| `GET/POST labels`, `PUT/DELETE labels/{id}`, `GET/PUT labels/chats/{chatId}` | Organize chats with labels (WhatsApp Business feature) | **done**, rename/recolor UI added **(this job)** | `waha.listLabels`/`createLabel`/`updateLabel`/`deleteLabel`/`getChatLabels`/`setChatLabels`; `updateLabel` now has a UI (pencil icon → inline rename + palette) — see below. |
 | `GET labels/{id}/chats` | List every chat carrying a given label | **done (this job)** | New `waha.getChatsByLabel` (backend/route ready; no dedicated "filter chat list by label" UI yet — see What's next). |
 
 ## Contacts
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET contacts/all` | Contact list | **done (this job)** | New `waha.listContacts` (`routes/contacts.ts`) — no picker UI wired to it yet (see "What's next"), but the backend/route is ready for one. |
+| `GET contacts/all` | Contact list | **done**, picker UI added **(this job)** | `waha.listContacts` (`routes/contacts.ts`); now backs a real `ContactPicker` component used both for "start a new chat" and "share a contact" — see below. |
 | `GET contacts`, `GET contacts/{id}` (session-scoped) | Single-contact lookup | todo | Only useful once there's a contacts picker UI to call it from. |
 | `GET contacts/about` | Contact's "about" text | todo | Small profile-panel addition. |
 | `GET contacts/profile-picture` | Contact avatar (non-chat-scoped variant) | **superseded** | Covered by the chat-scoped `chats/{chatId}/picture` we implemented this job — for a 1:1 DM, `chatId` *is* the contact's JID, so one endpoint serves both. |
@@ -283,13 +283,80 @@ since v5). Skipped this pass for the same reason as v5: this job's time went to 
 deployment first (see README), leaving less room for a second UI-heavy feature; better to ship
 labels solidly than two features half-done.
 
+## Added this job (v7 pass)
+
+Three things, per this job's brief: verify the VPS deployment isn't still carrying GitHub-Pages
+–era shortcuts, add a real-data-backed transparency indicator for message history, and continue
+the feature-gap list prioritized by product impact.
+
+**1. Architecture check (VPS vs GitHub Pages)** — audited `Dockerfile`, `backend/src/server.ts`,
+`frontend/vite.config.ts`, and `.github/workflows/deploy-pages.yml` end to end. Finding: **no
+leftover Pages-era shortcuts**, nothing to fix. Specifically — the backend already serves the SPA
+fallback itself (`server.ts`'s `setNotFoundHandler` → `index.html`), which is *better* than the
+common GitHub Pages `404.html`-redirect hack (no such file exists in this repo) and only works
+*because* it's a real dynamic server; `vite.config.ts`'s `base` path already defaults to `/` and is
+only overridden to `/whatsapp-sharp/` inside the Pages workflow's env, so the Docker/VPS build is
+unaffected; demo-mode-by-default (`Dockerfile`'s comment, `frontend/src/api.ts`'s `DEMO_MODE`) is a
+deliberate safety default carried over on purpose (a stray deploy can never reach a real WAHA
+instance), not a technical constraint inherited from Pages — and per this job's own guardrails it
+stays that way. Conclusion: the VPS container already is a genuine dynamic backend (Fastify serving
+real `/api/*` routes, capable of running against real WAHA if `VITE_DEMO_MODE=false` were ever set),
+it's just deliberately running in mock mode.
+
+**2. Message-history transparency** — pulled the *live* WAHA instance's own OpenAPI spec (dashboard
+Swagger UI at `/`, not the docs site) to check what `GET /api/{session}/chats/{chatId}/messages`
+actually returns: a bare `WAMessage[]` array, no total-count/has-more field of any kind — confirmed
+directly from the running instance's schema, not assumed. So the only real (non-guessed) pagination
+signal available is "did the count we got back hit the `limit` we asked for." Backend
+(`routes/chats.ts`): `GET /api/chats/:chatId/messages` now returns
+`{ messages, limit: 100, truncated }`, where `truncated = messages.length >= limit`. Frontend: a
+small notice at the top of `ChatThread` — when truncated, "Showing the most recent N messages
+loaded from this session — older history exists but wasn't fetched here"; otherwise "N messages
+loaded from this session — may not match the full history on your phone" (WAHA/WhatsApp Web
+sessions don't always sync full pre-link history, a separate completeness axis from pagination that
+a `truncated: false` can't rule out either — the copy says so honestly rather than overclaiming
+completeness). Wired through `demoApi` too (`truncated: false` always, since canned threads are
+short — an honest reflection of demo data, not a hardcoded claim).
+
+**3. Feature-gap list, by product impact:**
+
+1. **Contacts-picker UI** (highest priority, deferred three passes running) — new `ContactPicker`
+   component (self-contained, fetches `waha.listContacts`/`GET /api/contacts`, search-filterable),
+   used in two places: the chat list's new "+" button ("New chat" — pick a contact instead of typing
+   a raw number; jumps to the existing chat if one exists, matching `handleStartNewChat`'s existing
+   number-entry flow, which stays as a fallback), and the composer's new "share a contact" button.
+   `DEMO_CONTACTS` added to `demo-data.ts` (mix of contacts that already have a chat and ones that
+   don't, so both picker paths are exercised in the demo).
+2. **Share a location** — `waha.sendLocation` → `POST /api/sendLocation` (new route
+   `POST /api/chats/:chatId/location`, `isValidLatitude`/`isValidLongitude` guard real-world
+   coordinate ranges). UI: a composer button using the browser's Geolocation API ("share my current
+   location") — no map-search picker yet (that's a bigger UI lift, noted below). New `location`
+   message type, rendered as a pin + name linking to OpenStreetMap.
+3. **Share a contact card** — `waha.sendContactVcard` → `POST /api/sendContactVcard` (new route
+   `POST /api/chats/:chatId/contact`, reuses `ContactPicker` in "share" mode). New `contact` message
+   type, rendered as a name/number card.
+4. **Label rename/recolor UI** — `updateLabel` was implemented backend-side since the labels pass
+   but had no UI. `LabelsMenu` gained an inline edit mode (pencil icon → name input + an 8-swatch
+   color palette, save/cancel) — create/assign/delete/rename/recolor are all covered now.
+
+All four: implemented behind `wahaFetch`/routed per the established pattern, mirrored in `demoApi`,
+new validators (`isValidLatitude`, `isValidLongitude`, `isValidContactId`) with their own unit
+tests. 46 backend tests total (was 40).
+
+**Not done this job** (explicitly out of scope per the brief, not silently skipped): the "Claude
+design" pass for a polished UI, and the dynamic/prompt-driven-UI idea — both noted for a future
+pass, not yet specified. Also still deferred: `sendVoice` (needs an in-browser recorder — bigger
+lift than the other gaps), `sendPoll`/`sendPollVote` (multi-field composer UI), group management UI,
+and a Settings screen for profile.
+
 ## What's next (highest-value gaps, not done this job)
 
-In rough priority order for a future pass: a **contacts-picker UI** on top of the
-still-unused `waha.listContacts`/`GET /api/contacts` (highest priority — deferred three passes
-running now); `sendVoice` (needs an in-browser recorder) and `sendLocation`/`sendContactVcard`
-(need picker UI); a "filter chat list by label" view on top of the now-implemented
-`getChatsByLabel`; label **rename**/recolor UI (`updateLabel` is implemented backend-side, no
-UI calls it yet — create/assign/delete are covered, rename/recolor aren't); group *management*
-UI (group messaging already works — it's just another `chatId`); a Settings screen for profile
-(name/about/avatar).
+In rough priority order for a future pass: `sendVoice` (needs an in-browser recorder — the one
+remaining "send" gap with real UI weight); a location **search/map picker** (current location-share
+only offers "my current position," not "search for an address" — `sendLocation` itself is done, this
+is a UI upgrade); `sendPoll`/`sendPollVote` (multi-field composer UI, vote-rendering in
+`MessageBubble`); a "filter chat list by label" view on top of the already-implemented
+`getChatsByLabel`; group *management* UI (group messaging already works — it's just another
+`chatId`); a Settings screen for profile (name/about/avatar); message pagination/infinite scroll
+(load older messages past the current 100-message window — would also let a `truncated: true` chat
+become "actually complete" on demand instead of just being flagged).

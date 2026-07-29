@@ -1,7 +1,7 @@
 import { demoApi } from "./demo-data.js";
 
 export type MessageStatus = "sent" | "delivered" | "read";
-export type MessageType = "text" | "image" | "file" | "voice" | "video";
+export type MessageType = "text" | "image" | "file" | "voice" | "video" | "location" | "contact";
 
 export interface Chat {
   id: string;
@@ -40,6 +40,11 @@ export interface Message {
   reaction?: string;
   starred?: boolean;
   pinned?: boolean;
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
+  contactName?: string;
+  contactNumber?: string;
   [key: string]: unknown;
 }
 
@@ -79,6 +84,23 @@ export interface SendError {
   reason?: string;
 }
 
+/** `truncated: true` means we hit the fetch cap (`limit`) — older messages likely exist but
+ *  weren't loaded via this session. `truncated: false` means WAHA returned fewer than `limit`,
+ *  which is the best signal available (WAHA's API has no total-count field) but still isn't a
+ *  guarantee this matches the complete history on the phone. */
+export interface MessagesResult {
+  messages: Message[];
+  limit: number;
+  truncated: boolean;
+}
+
+export interface Contact {
+  id: string;
+  name?: string;
+  pushname?: string;
+  number?: string;
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.text();
@@ -104,7 +126,7 @@ const realApi = {
 
   getMessages: (chatId: string) =>
     fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`).then((r) =>
-      json<Message[]>(r),
+      json<MessagesResult>(r),
     ),
 
   sendMessage: (chatId: string, text: string) =>
@@ -158,6 +180,20 @@ const realApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ file, caption }),
+    }).then((r) => json<Message>(r)),
+
+  sendLocation: (chatId: string, latitude: number, longitude: number, name?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/location`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude, longitude, title: name }),
+    }).then((r) => json<Message>(r)),
+
+  sendContact: (chatId: string, contactId: string, name?: string, phoneNumber?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/contact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId, name, phoneNumber }),
     }).then((r) => json<Message>(r)),
 
   markRead: (chatId: string) =>
@@ -233,6 +269,8 @@ const realApi = {
       json<NumberStatus>(r),
     ),
 
+  listContacts: () => fetch("/api/contacts").then((r) => json<Contact[]>(r)),
+
   runAiCommand: (chatId: string, instruction: string) =>
     fetch("/api/ai/command", {
       method: "POST",
@@ -247,6 +285,13 @@ const realApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
+    }).then((r) => json<Label>(r)),
+
+  updateLabel: (labelId: string, name: string, color?: number, colorHex?: string) =>
+    fetch(`/api/labels/${encodeURIComponent(labelId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, color, colorHex }),
     }).then((r) => json<Label>(r)),
 
   deleteLabel: (labelId: string) =>
