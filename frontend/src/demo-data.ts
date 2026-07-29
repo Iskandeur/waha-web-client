@@ -1,8 +1,10 @@
 import type {
   Chat,
   ChatPresence,
+  Contact,
   Label,
   Message,
+  MessagesResult,
   MessageStatus,
   MessageType,
   NumberStatus,
@@ -131,6 +133,20 @@ export const DEMO_CHATS: Chat[] = [
   },
 ];
 
+/** Canned contact list for the picker (new chat / share contact) — mixes contacts that already
+ *  have a chat (so picking them jumps straight there, `id` matches the `DEMO_CHATS` entry) with
+ *  a couple that don't yet (so picking them demonstrates starting a fresh chat). */
+export const DEMO_CONTACTS: Contact[] = [
+  { id: "demo-2", name: "Sam", pushname: "Sam", number: "+1 415 555 0142" },
+  { id: "demo-1", name: "Alex", pushname: "Alex", number: "+1 415 555 0198" },
+  { id: "demo-4", name: "Jordan", pushname: "Jordan", number: "+1 415 555 0110" },
+  { id: "15551230001@c.us", name: "Priya", pushname: "Priya", number: "+1 555 123 0001" },
+  { id: "15551230002@c.us", name: "Marco", pushname: "Marco", number: "+1 555 123 0002" },
+  { id: "15551230003@c.us", name: "Noor", pushname: "Noor", number: "+1 555 123 0003" },
+  { id: "15551230004@c.us", name: "Tariq", pushname: "Tariq", number: "+1 555 123 0004" },
+  { id: "15551230005@c.us", name: "Priya's studio", number: "+1 555 123 0005" },
+];
+
 let nextLabelId = 3;
 export const DEMO_LABELS: Label[] = [
   { id: "1", name: "Friends", color: 0, colorHex: "#ff9485" },
@@ -168,7 +184,10 @@ export const demoApi = {
   listChats: () =>
     delay([...DEMO_CHATS].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))),
 
-  getMessages: (chatId: string) => delay(DEMO_MESSAGES[chatId] ?? []),
+  // All canned threads are well under any real fetch cap, so `truncated` is always false — an
+  // honest reflection of demo data, not a hardcoded claim about real WAHA history.
+  getMessages: (chatId: string): Promise<MessagesResult> =>
+    delay({ messages: DEMO_MESSAGES[chatId] ?? [], limit: 100, truncated: false }),
 
   sendMessage: (chatId: string, text: string) => {
     const message: Message = {
@@ -261,6 +280,54 @@ export const demoApi = {
     const chat = DEMO_CHATS.find((c) => c.id === chatId);
     if (chat) {
       chat.lastMessagePreview = messagePreview(message);
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  sendLocation: (chatId: string, latitude: number, longitude: number, name?: string) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "location",
+      body: name ?? "Shared location",
+      latitude,
+      longitude,
+      locationName: name,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = "📍 Location";
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  sendContact: (chatId: string, contactId: string, name?: string, phoneNumber?: string) => {
+    const contact = DEMO_CONTACTS.find((c) => c.id === contactId);
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "contact",
+      body: "",
+      contactName: name ?? contact?.name ?? contact?.pushname ?? "Contact",
+      contactNumber: phoneNumber ?? contact?.number,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = `👤 ${message.contactName}`;
       chat.lastMessageAt = message.timestamp;
       chat.lastMessageFromMe = true;
       chat.lastMessageStatus = "sent";
@@ -371,12 +438,23 @@ export const demoApi = {
   runAiCommand: (_chatId: string, instruction: string) =>
     delay({ suggestion: demoAiCommand(instruction) }, 500),
 
+  listContacts: () => delay([...DEMO_CONTACTS]),
+
   listLabels: () => delay([...DEMO_LABELS]),
 
   createLabel: (name: string) => {
     const label: Label = { id: String(nextLabelId++), name, color: 0, colorHex: "#8696a0" };
     DEMO_LABELS.push(label);
     return delay(label);
+  },
+
+  updateLabel: (labelId: string, name: string, color?: number, colorHex?: string) => {
+    const label = DEMO_LABELS.find((l) => l.id === labelId);
+    if (!label) throw new Error("Label not found");
+    label.name = name;
+    if (color !== undefined) label.color = color;
+    if (colorHex !== undefined) label.colorHex = colorHex;
+    return delay({ ...label });
   },
 
   deleteLabel: (labelId: string) => {
