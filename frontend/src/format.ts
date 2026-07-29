@@ -42,6 +42,8 @@ export interface PreviewSource {
   body: string;
   mediaName?: string;
   durationSec?: number;
+  pollName?: string;
+  contactName?: string;
 }
 
 /** One-line preview for the chat list and for a message's own summary — media types get a
@@ -56,6 +58,12 @@ export function messagePreview(m: PreviewSource): string {
       return `🎤 Voice message${m.durationSec ? ` · 0:${String(m.durationSec).padStart(2, "0")}` : ""}`;
     case "video":
       return m.body ? `🎥 ${m.body}` : "🎥 Video";
+    case "location":
+      return "📍 Location";
+    case "contact":
+      return `👤 ${m.contactName ?? "Contact"}`;
+    case "poll":
+      return `📊 ${m.pollName ?? m.body}`;
     default:
       return m.body;
   }
