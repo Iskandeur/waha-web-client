@@ -37,6 +37,27 @@ export function isValidText(text: unknown): text is string {
   return typeof text === "string" && text.trim().length > 0;
 }
 
+/** WhatsApp polls allow 2-12 options (WAHA passes the array straight through) — validated here
+ *  so a malformed poll 400s instead of surfacing as an opaque WAHA error. */
+export const POLL_MIN_OPTIONS = 2;
+export const POLL_MAX_OPTIONS = 12;
+
+export function isValidPollName(name: unknown): name is string {
+  return typeof name === "string" && name.trim().length > 0;
+}
+
+export function isValidPollOptions(options: unknown): options is string[] {
+  if (!Array.isArray(options)) return false;
+  if (options.length < POLL_MIN_OPTIONS || options.length > POLL_MAX_OPTIONS) return false;
+  return options.every((o) => typeof o === "string" && o.trim().length > 0);
+}
+
+/** Votes are the option texts the voter picked — an empty array retracts the vote, so only
+ *  the shape (an array of non-empty strings) is checked here, not a minimum length. */
+export function isValidVotes(votes: unknown): votes is string[] {
+  return Array.isArray(votes) && votes.every((v) => typeof v === "string" && v.trim().length > 0);
+}
+
 /** How many messages we ask WAHA for per chat. WAHA's `GET .../messages` has no total-count or
  *  "has more" field in its response (verified against the live instance's own OpenAPI spec) —
  *  it's a bare array, capped at whatever `limit` we pass. So "did we get exactly `limit` back"
@@ -143,6 +164,65 @@ export async function chatsRoutes(app: FastifyInstance) {
         }
         throw err;
       }
+    },
+  );
+
+  app.post<{ Params: { chatId: string }; Body: { file: WahaFileInput } }>(
+    "/api/chats/:chatId/voice",
+    async (req, reply) => {
+      const { file } = req.body;
+      if (!isValidFile(file)) {
+        reply.code(400);
+        return { error: "file (mimetype + url or data) is required" };
+      }
+      try {
+        return await waha.sendVoice(req.params.chatId, file);
+      } catch (err) {
+        if (err instanceof GuardBlockedError) {
+          reply.code(429);
+          return { error: "blocked-by-guard", reason: err.reason };
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.post<{
+    Params: { chatId: string };
+    Body: { name: string; options: string[]; multipleAnswers?: boolean };
+  }>("/api/chats/:chatId/poll", async (req, reply) => {
+    const { name, options, multipleAnswers } = req.body;
+    if (!isValidPollName(name)) {
+      reply.code(400);
+      return { error: "name (poll question) is required" };
+    }
+    if (!isValidPollOptions(options)) {
+      reply.code(400);
+      return {
+        error: `options must be an array of ${POLL_MIN_OPTIONS}-${POLL_MAX_OPTIONS} non-empty strings`,
+      };
+    }
+    try {
+      return await waha.sendPoll(req.params.chatId, name, options, multipleAnswers ?? false);
+    } catch (err) {
+      if (err instanceof GuardBlockedError) {
+        reply.code(429);
+        return { error: "blocked-by-guard", reason: err.reason };
+      }
+      throw err;
+    }
+  });
+
+  app.post<{ Params: { chatId: string; messageId: string }; Body: { votes: string[] } }>(
+    "/api/chats/:chatId/messages/:messageId/poll-vote",
+    async (req, reply) => {
+      const { votes } = req.body;
+      if (!isValidVotes(votes)) {
+        reply.code(400);
+        return { error: "votes must be an array of option strings (empty array retracts)" };
+      }
+      await waha.sendPollVote(req.params.chatId, req.params.messageId, votes);
+      return { ok: true };
     },
   );
 

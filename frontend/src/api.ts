@@ -1,7 +1,23 @@
 import { demoApi } from "./demo-data.js";
 
 export type MessageStatus = "sent" | "delivered" | "read";
-export type MessageType = "text" | "image" | "file" | "voice" | "video" | "location" | "contact";
+export type MessageType =
+  | "text"
+  | "image"
+  | "file"
+  | "voice"
+  | "video"
+  | "location"
+  | "contact"
+  | "poll";
+
+/** One option in a poll message, with the voter ids (JIDs) that picked it — mirrors what a
+ *  `sendPollVote` roundtrip would let us reconstruct locally (WAHA gives us the vote events,
+ *  not a server-computed tally, so counting is a client concern). */
+export interface PollOption {
+  name: string;
+  votes: string[];
+}
 
 export interface Chat {
   id: string;
@@ -13,6 +29,7 @@ export interface Chat {
   presence?: string;
   pinned?: boolean;
   isArchived?: boolean;
+  isBlocked?: boolean;
   unreadCount?: number;
   lastMessagePreview?: string;
   lastMessageAt?: number;
@@ -45,6 +62,9 @@ export interface Message {
   locationName?: string;
   contactName?: string;
   contactNumber?: string;
+  pollName?: string;
+  pollOptions?: PollOption[];
+  pollMultipleAnswers?: boolean;
   [key: string]: unknown;
 }
 
@@ -72,6 +92,10 @@ export const PIN_DURATIONS = {
   "7d": 604800,
   "30d": 2592000,
 } as const;
+
+/** WhatsApp allows 2-12 poll options — mirrors the backend's `POLL_MIN_OPTIONS`/`POLL_MAX_OPTIONS`. */
+export const POLL_MIN_OPTIONS = 2;
+export const POLL_MAX_OPTIONS = 12;
 
 /** Either a remote URL or inline base64 data, both tagged with a mimetype — mirrors WAHA's
  *  `MessageImageRequest.file` shape (see backend `WahaFileInput`). */
@@ -208,6 +232,30 @@ const realApi = {
       body: JSON.stringify({ file, caption }),
     }).then((r) => json<Message>(r)),
 
+  sendVoice: (chatId: string, file: OutgoingFile) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/voice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file }),
+    }).then((r) => json<Message>(r)),
+
+  sendPoll: (chatId: string, name: string, options: string[], multipleAnswers?: boolean) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/poll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, options, multipleAnswers }),
+    }).then((r) => json<Message>(r)),
+
+  votePoll: (chatId: string, messageId: string, votes: string[]) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/poll-vote`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votes }),
+      },
+    ).then((r) => json<{ ok: true }>(r)),
+
   sendLocation: (chatId: string, latitude: number, longitude: number, name?: string) =>
     fetch(`/api/chats/${encodeURIComponent(chatId)}/location`, {
       method: "POST",
@@ -296,6 +344,20 @@ const realApi = {
     ),
 
   listContacts: () => fetch("/api/contacts").then((r) => json<Contact[]>(r)),
+
+  blockContact: (contactId: string) =>
+    fetch("/api/contacts/block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  unblockContact: (contactId: string) =>
+    fetch("/api/contacts/unblock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId }),
+    }).then((r) => json<{ ok: true }>(r)),
 
   runAiCommand: (chatId: string, instruction: string) =>
     fetch("/api/ai/command", {

@@ -6,8 +6,13 @@ import {
   isValidLatitude,
   isValidLongitude,
   isValidPinDuration,
+  isValidPollName,
+  isValidPollOptions,
   isValidText,
+  isValidVotes,
   PIN_DURATIONS,
+  POLL_MAX_OPTIONS,
+  POLL_MIN_OPTIONS,
 } from "./chats.js";
 
 test("isValidFile accepts a remote-URL file (mimetype + url)", () => {
@@ -109,4 +114,49 @@ test("isValidContactId rejects empty/whitespace-only or non-string input", () =>
   assert.equal(isValidContactId("   "), false);
   assert.equal(isValidContactId(null), false);
   assert.equal(isValidContactId(undefined), false);
+});
+
+test("isValidPollName accepts non-empty text", () => {
+  assert.equal(isValidPollName("Where should we eat?"), true);
+});
+
+test("isValidPollName rejects empty/whitespace-only or non-string input", () => {
+  assert.equal(isValidPollName(""), false);
+  assert.equal(isValidPollName("   "), false);
+  assert.equal(isValidPollName(null), false);
+  assert.equal(isValidPollName(undefined), false);
+});
+
+test("isValidPollOptions accepts an array within the 2-12 WhatsApp option limit", () => {
+  assert.equal(isValidPollOptions(["Ramen", "Pizza"]), true);
+  assert.equal(isValidPollOptions(Array.from({ length: POLL_MAX_OPTIONS }, (_, i) => `opt${i}`)), true);
+});
+
+test("isValidPollOptions rejects too few, too many, or non-string entries", () => {
+  assert.equal(isValidPollOptions(["Only one"]), false);
+  assert.equal(
+    isValidPollOptions(Array.from({ length: POLL_MAX_OPTIONS + 1 }, (_, i) => `opt${i}`)),
+    false,
+  );
+  assert.equal(isValidPollOptions(["Ramen", ""]), false);
+  assert.equal(isValidPollOptions(["Ramen", 42]), false);
+  assert.equal(isValidPollOptions("not-an-array"), false);
+  assert.equal(isValidPollOptions(null), false);
+});
+
+test("isValidPollOptions boundary: exactly POLL_MIN_OPTIONS/POLL_MAX_OPTIONS", () => {
+  assert.equal(POLL_MIN_OPTIONS, 2);
+  assert.equal(POLL_MAX_OPTIONS, 12);
+});
+
+test("isValidVotes accepts an array of option strings, including empty (retract)", () => {
+  assert.equal(isValidVotes([]), true);
+  assert.equal(isValidVotes(["Ramen"]), true);
+});
+
+test("isValidVotes rejects non-array or non-string entries", () => {
+  assert.equal(isValidVotes("Ramen"), false);
+  assert.equal(isValidVotes([42]), false);
+  assert.equal(isValidVotes(null), false);
+  assert.equal(isValidVotes(undefined), false);
 });

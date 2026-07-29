@@ -3,9 +3,18 @@ import type { Message } from "../api.js";
 import { formatClockTime } from "../format.js";
 import { StatusTicks } from "./StatusTicks.js";
 import { MessageActions } from "./MessageActions.js";
-import { FileIcon, ImageIcon, MapPinIcon, PinIcon, PlayIcon, StarIcon, UserIcon } from "./icons.js";
+import {
+  CheckIcon,
+  FileIcon,
+  ImageIcon,
+  MapPinIcon,
+  PinIcon,
+  PlayIcon,
+  StarIcon,
+  UserIcon,
+} from "./icons.js";
 
-function MessageContent({ m }: { m: Message }) {
+function MessageContent({ m, onVotePoll }: { m: Message; onVotePoll?: (votes: string[]) => void }) {
   switch (m.type) {
     case "image":
       return m.mediaUrl ? (
@@ -65,7 +74,11 @@ function MessageContent({ m }: { m: Message }) {
         </div>
       );
     case "voice":
-      return (
+      return m.mediaUrl ? (
+        <div className="message-media message-media-voice message-media-voice-real">
+          <audio src={m.mediaUrl} controls className="voice-audio" />
+        </div>
+      ) : (
         <div className="message-media message-media-voice">
           <button className="voice-play" type="button" aria-label="Play voice message">
             <PlayIcon size={14} />
@@ -76,9 +89,60 @@ function MessageContent({ m }: { m: Message }) {
           </span>
         </div>
       );
+    case "poll":
+      return <PollContent m={m} onVotePoll={onVotePoll} />;
     default:
       return <div className="message-body">{m.body}</div>;
   }
+}
+
+/** WAHA gives us vote *events*, not a server-computed tally, so counting is a client concern
+ *  here — same reasoning as the demo's `votePoll`. This component has no notion of "my own
+ *  JID" (that would need an extra profile fetch per bubble), so selection is tracked as local
+ *  UI state rather than derived from `votes` containing "me"; the vote counts themselves
+ *  (`option.votes.length`) still reflect real server/demo state after each reload. */
+function PollContent({ m, onVotePoll }: { m: Message; onVotePoll?: (votes: string[]) => void }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const options = m.pollOptions ?? [];
+
+  function toggle(name: string) {
+    const next = m.pollMultipleAnswers
+      ? selected.includes(name)
+        ? selected.filter((n) => n !== name)
+        : [...selected, name]
+      : selected.includes(name)
+        ? []
+        : [name];
+    setSelected(next);
+    onVotePoll?.(next);
+  }
+
+  return (
+    <div className="message-media message-media-poll">
+      <div className="poll-question">{m.pollName || m.body}</div>
+      <ul className="poll-options">
+        {options.map((opt) => (
+          <li key={opt.name}>
+            <button
+              type="button"
+              className="poll-option"
+              disabled={!onVotePoll}
+              onClick={() => toggle(opt.name)}
+            >
+              <span className="poll-option-check">
+                {selected.includes(opt.name) && <CheckIcon size={14} />}
+              </span>
+              <span className="poll-option-name">{opt.name}</span>
+              <span className="poll-option-votes">{opt.votes.length || ""}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="poll-footer">
+        {m.pollMultipleAnswers ? "Select one or more" : "Select one"}
+      </div>
+    </div>
+  );
 }
 
 export function MessageBubble({
@@ -89,6 +153,7 @@ export function MessageBubble({
   onTogglePin,
   onEdit,
   onDelete,
+  onVotePoll,
 }: {
   message: Message;
   showSender?: boolean;
@@ -97,6 +162,7 @@ export function MessageBubble({
   onTogglePin: () => void;
   onEdit?: (text: string) => void;
   onDelete?: () => void;
+  onVotePoll?: (votes: string[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.body);
@@ -158,7 +224,7 @@ export function MessageBubble({
           </div>
         </form>
       ) : (
-        <MessageContent m={message} />
+        <MessageContent m={message} onVotePoll={onVotePoll} />
       )}
       <div className="message-meta">
         {message.starred && <StarIcon size={12} filled className="message-star-badge" />}

@@ -334,6 +334,66 @@ export const demoApi = {
     return delay(message);
   },
 
+  sendVoice: (chatId: string, file: OutgoingFile) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "voice",
+      body: "",
+      mediaUrl: "url" in file ? file.url : `data:${file.mimetype};base64,${file.data}`,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = "🎤 Voice message";
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  sendPoll: (chatId: string, name: string, options: string[], multipleAnswers?: boolean) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "poll",
+      body: name,
+      pollName: name,
+      pollOptions: options.map((o) => ({ name: o, votes: [] })),
+      pollMultipleAnswers: multipleAnswers ?? false,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = `📊 ${name}`;
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  // "Me" is a fixed synthetic voter id in the demo (there's no real WAHA session to derive one
+  // from) — same role `DEMO_PROFILE.id` plays for group participant lists.
+  votePoll: (chatId: string, messageId: string, votes: string[]) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message?.pollOptions) {
+      const voterId = DEMO_PROFILE.id;
+      for (const opt of message.pollOptions) {
+        opt.votes = opt.votes.filter((v) => v !== voterId);
+        if (votes.includes(opt.name)) opt.votes.push(voterId);
+      }
+    }
+    return delay({ ok: true as const });
+  },
+
   sendLocation: (chatId: string, latitude: number, longitude: number, name?: string) => {
     const message: Message = {
       id: `local-${Date.now()}-${Math.random()}`,
@@ -485,6 +545,18 @@ export const demoApi = {
     delay({ suggestion: demoAiCommand(instruction) }, 500),
 
   listContacts: () => delay([...DEMO_CONTACTS]),
+
+  blockContact: (contactId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === contactId);
+    if (chat) chat.isBlocked = true;
+    return delay({ ok: true as const });
+  },
+
+  unblockContact: (contactId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === contactId);
+    if (chat) chat.isBlocked = false;
+    return delay({ ok: true as const });
+  },
 
   listLabels: () => delay([...DEMO_LABELS]),
 

@@ -16,6 +16,7 @@ export function ChatThread({
   onTogglePin,
   onEditMessage,
   onDeleteMessage,
+  onVotePoll,
 }: {
   messages: Message[];
   historyTruncated?: boolean;
@@ -25,6 +26,7 @@ export function ChatThread({
   onTogglePin: (messageId: string, pinned: boolean) => void;
   onEditMessage: (messageId: string, text: string) => void;
   onDeleteMessage: (messageId: string) => void;
+  onVotePoll: (messageId: string, votes: string[]) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +62,7 @@ export function ChatThread({
               onTogglePin={() => onTogglePin(m.id, !m.pinned)}
               onEdit={(text) => onEditMessage(m.id, text)}
               onDelete={() => onDeleteMessage(m.id)}
+              onVotePoll={m.type === "poll" ? (votes) => onVotePoll(m.id, votes) : undefined}
             />
           </div>
         );

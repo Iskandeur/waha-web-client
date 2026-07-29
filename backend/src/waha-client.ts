@@ -281,6 +281,11 @@ export const waha = {
   listSessions: (session = config.wahaSession) =>
     wahaFetch<unknown[]>("/api/sessions", {}, { kind: "read", session }),
 
+  /** Session detail / "who am I" — a small, low-risk read (no dedicated UI yet, same status
+   *  as `getGroupsCount`/`refreshGroups`: wired for future use, not surfaced as its own control). */
+  getSessionMe: (session = config.wahaSession) =>
+    wahaFetch<unknown>(`/api/sessions/${session}/me`, {}, { kind: "read", session }),
+
   chatsOverview: (session = config.wahaSession, limit = 50) =>
     wahaFetch<WahaChat[]>(
       `/api/${session}/chats/overview?limit=${limit}`,
@@ -320,6 +325,30 @@ export const waha = {
       `/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(session)}`,
       {},
       { kind: "read", session },
+    ),
+
+  /** Same `?session=` query-param scoping as `listContacts`/`checkNumberExists` above (WAHA's
+   *  own inconsistency vs. the `/{session}/` path prefix most other endpoints use). No
+   *  dedicated UI yet — wired for future use, same status as `getGroupsCount`/`refreshGroups`. */
+  getContactAbout: (contactId: string, session = config.wahaSession) =>
+    wahaFetch<{ about: string | null }>(
+      `/api/contacts/about?contactId=${encodeURIComponent(contactId)}&session=${encodeURIComponent(session)}`,
+      {},
+      { kind: "read", session },
+    ),
+
+  blockContact: (contactId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      "/api/contacts/block",
+      { method: "POST", body: JSON.stringify({ session, contactId }) },
+      { kind: "send", session },
+    ),
+
+  unblockContact: (contactId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      "/api/contacts/unblock",
+      { method: "POST", body: JSON.stringify({ session, contactId }) },
+      { kind: "send", session },
     ),
 
   /** Mirrors WhatsApp's own read receipt — sends a "seen" signal to the peer, same as
@@ -452,6 +481,19 @@ export const waha = {
       ),
     ),
 
+  /** Voice note — same guard path and `WahaFileInput` shape as `sendImage`/`sendFile` (a
+   *  browser-recorded clip, base64-encoded). WhatsApp voice notes have no caption, so the
+   *  guard's duplicate-content check runs against an empty string (every recording looks
+   *  "new" to that check, which is correct — there's no text to compare). */
+  sendVoice: (chatId: string, file: WahaFileInput, session = config.wahaSession) =>
+    sendGuarded(chatId, "", session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendVoice",
+        { method: "POST", body: JSON.stringify({ session, chatId, file }) },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
   /** Same guard path as `sendImage` — a location pin is exactly as visible to WhatsApp's abuse
    *  detection as any other message. `title` is required by WAHA's own schema. */
   sendLocation: (
@@ -481,6 +523,38 @@ export const waha = {
         { method: "POST", body: JSON.stringify({ session, chatId, contacts }) },
         { kind: "send", session, chatId },
       ),
+    ),
+
+  /** Same guard path as other sends — a poll is a message like any other. WAHA's `poll.name` is
+   *  the question text, `options` the list of choices (2-12 per WhatsApp's own limit, enforced
+   *  in the route validator, not here). */
+  sendPoll: (
+    chatId: string,
+    name: string,
+    options: string[],
+    multipleAnswers = false,
+    session = config.wahaSession,
+  ) =>
+    sendGuarded(chatId, name, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendPoll",
+        {
+          method: "POST",
+          body: JSON.stringify({ session, chatId, poll: { name, options, multipleAnswers } }),
+        },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
+  /** Casting a vote is a lightweight interaction, not a "send" in the abuse-pattern sense
+   *  (same reasoning as `setReaction`/`setStar` below) — skips `sendGuarded`, still goes
+   *  through `wahaFetch`. `votes` is the list of option texts the voter picked (empty array
+   *  retracts the vote). */
+  sendPollVote: (chatId: string, messageId: string, votes: string[], session = config.wahaSession) =>
+    wahaFetch<void>(
+      "/api/sendPollVote",
+      { method: "POST", body: JSON.stringify({ session, chatId, messageId, votes }) },
+      { kind: "send", session, chatId },
     ),
 
   /** Reactions and stars are lightweight, low-frequency mutations, not "message sends" in the

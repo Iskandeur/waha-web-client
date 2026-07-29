@@ -114,6 +114,36 @@ export default function App() {
     }
   }
 
+  async function handleSendVoice(file: OutgoingFile) {
+    if (!selectedId) return;
+    try {
+      await api.sendVoice(selectedId, file);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendPoll(name: string, options: string[], multipleAnswers: boolean) {
+    if (!selectedId) return;
+    try {
+      await api.sendPoll(selectedId, name, options, multipleAnswers);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleVotePoll(messageId: string, votes: string[]) {
+    if (!selectedId) return;
+    try {
+      await api.votePoll(selectedId, messageId, votes);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handleShareContact(contact: Contact) {
     if (!selectedId) return;
     try {
@@ -177,6 +207,24 @@ export default function App() {
     try {
       if (nextArchived) await api.archiveChat(chatId);
       else await api.unarchiveChat(chatId);
+    } catch (err) {
+      setChats(prev);
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // WAHA has no "is this contact blocked" getter (block/unblock are one-way actions) — so
+  // `isBlocked` only ever reflects a toggle made from this client this session, same honest
+  // limitation as the profile "about" field (see docs/waha-coverage.md).
+  async function handleToggleBlock(chatId: string) {
+    const chat = chats.find((c) => c.id === chatId);
+    if (!chat) return;
+    const nextBlocked = !chat.isBlocked;
+    const prev = chats;
+    setChats((cs) => cs.map((c) => (c.id === chatId ? { ...c, isBlocked: nextBlocked } : c)));
+    try {
+      if (nextBlocked) await api.blockContact(chatId);
+      else await api.unblockContact(chatId);
     } catch (err) {
       setChats(prev);
       setSendError(err instanceof Error ? err.message : String(err));
@@ -249,7 +297,7 @@ export default function App() {
 
   /** Backs the chat list's "Start chat with <number>" affordance: confirms the number is on
    *  WhatsApp, then either jumps to the existing chat or seeds a fresh (message-less) one and
-   *  selects it — the first `sendMessage` is what actually creates the chat on WAHA's side. */
+   *  selects it — the first `sendMessage` is what actually creates it on WAHA's side. */
   async function handleStartNewChat(phone: string) {
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 6) throw new Error("Enter a valid phone number");
@@ -368,6 +416,7 @@ export default function App() {
               <ChatHeader
                 chat={selectedChat}
                 onToggleArchive={() => handleToggleArchive(selectedChat.id)}
+                onToggleBlock={() => handleToggleBlock(selectedChat.id)}
                 onClearMessages={() => handleClearMessages(selectedChat.id)}
                 onDeleteChat={() => handleDeleteChat(selectedChat.id)}
                 onGroupSubjectChange={handleGroupSubjectChange}
@@ -382,6 +431,7 @@ export default function App() {
                 onTogglePin={handleTogglePin}
                 onEditMessage={handleEditMessage}
                 onDeleteMessage={handleDeleteMessage}
+                onVotePoll={handleVotePoll}
               />
               {sendError && <div className="send-error-banner">Message not sent: {sendError}</div>}
               <CommandBar
@@ -395,6 +445,8 @@ export default function App() {
                 onSendImage={handleSendImage}
                 onSendVideo={handleSendVideo}
                 onSendFile={handleSendFile}
+                onSendVoice={handleSendVoice}
+                onSendPoll={handleSendPoll}
                 onSendLocation={handleSendLocation}
                 onShareContact={handleShareContact}
               />
