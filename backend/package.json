@@ -8,7 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "test": "tsx --test src/guard/*.test.ts"
+    "test": "tsx --test src/guard/*.test.ts src/routes/*.test.ts"
   },
   "dependencies": {
     "fastify": "^5.0.0",
