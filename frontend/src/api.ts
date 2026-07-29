@@ -43,6 +43,13 @@ export interface Message {
   [key: string]: unknown;
 }
 
+export interface Label {
+  id: string;
+  name: string;
+  color: number;
+  colorHex: string;
+}
+
 export interface PeerPresence {
   participant: string;
   lastKnownPresence: string;
@@ -232,6 +239,30 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chatId, instruction }),
     }).then((r) => json<{ suggestion: string }>(r)),
+
+  listLabels: () => fetch("/api/labels").then((r) => json<Label[]>(r)),
+
+  createLabel: (name: string) =>
+    fetch("/api/labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then((r) => json<Label>(r)),
+
+  deleteLabel: (labelId: string) =>
+    fetch(`/api/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  getChatLabels: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/labels`).then((r) => json<Label[]>(r)),
+
+  setChatLabels: (chatId: string, labelIds: string[]) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/labels`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ labelIds }),
+    }).then((r) => json<{ ok: true }>(r)),
 };
 
 export const api = DEMO_MODE ? demoApi : realApi;

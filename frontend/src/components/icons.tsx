@@ -188,3 +188,21 @@ export function PencilIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function TagIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20.6 12.3 12.7 20.2a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1 0-2.8L10.8 2.5a2 2 0 0 1 1.4-.6H19a2 2 0 0 1 2 2v6.9a2 2 0 0 1-.4 1.5Z" />
+      <circle cx="15.5" cy="7.5" r="1.5" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </Svg>
+  );
+}

@@ -1,6 +1,7 @@
 import type {
   Chat,
   ChatPresence,
+  Label,
   Message,
   MessageStatus,
   MessageType,
@@ -129,6 +130,16 @@ export const DEMO_CHATS: Chat[] = [
     ...lastMessageFields("demo-5"),
   },
 ];
+
+let nextLabelId = 3;
+export const DEMO_LABELS: Label[] = [
+  { id: "1", name: "Friends", color: 0, colorHex: "#ff9485" },
+  { id: "2", name: "Trip planning", color: 1, colorHex: "#54c9c2" },
+];
+
+const DEMO_CHAT_LABELS: Record<string, string[]> = {
+  "demo-2": ["2"],
+};
 
 const CANNED_SUGGESTIONS: { match: RegExp; suggestion: string }[] = [
   {
@@ -359,4 +370,31 @@ export const demoApi = {
 
   runAiCommand: (_chatId: string, instruction: string) =>
     delay({ suggestion: demoAiCommand(instruction) }, 500),
+
+  listLabels: () => delay([...DEMO_LABELS]),
+
+  createLabel: (name: string) => {
+    const label: Label = { id: String(nextLabelId++), name, color: 0, colorHex: "#8696a0" };
+    DEMO_LABELS.push(label);
+    return delay(label);
+  },
+
+  deleteLabel: (labelId: string) => {
+    const idx = DEMO_LABELS.findIndex((l) => l.id === labelId);
+    if (idx !== -1) DEMO_LABELS.splice(idx, 1);
+    for (const chatId of Object.keys(DEMO_CHAT_LABELS)) {
+      DEMO_CHAT_LABELS[chatId] = DEMO_CHAT_LABELS[chatId].filter((id) => id !== labelId);
+    }
+    return delay({ ok: true as const });
+  },
+
+  getChatLabels: (chatId: string) => {
+    const ids = DEMO_CHAT_LABELS[chatId] ?? [];
+    return delay(DEMO_LABELS.filter((l) => ids.includes(l.id)));
+  },
+
+  setChatLabels: (chatId: string, labelIds: string[]) => {
+    DEMO_CHAT_LABELS[chatId] = [...labelIds];
+    return delay({ ok: true as const });
+  },
 };

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { api, type Chat } from "../api.js";
 import { formatPresence } from "../format.js";
 import { Avatar } from "./Avatar.js";
-import { ArchiveIcon, MoreVerticalIcon, SearchIcon, TrashIcon } from "./icons.js";
+import { ArchiveIcon, MoreVerticalIcon, SearchIcon, TagIcon, TrashIcon } from "./icons.js";
+import { LabelsMenu } from "./LabelsMenu.js";
 
 export function ChatHeader({
   chat,
@@ -17,12 +18,14 @@ export function ChatHeader({
 }) {
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
   // Falls back to the chat list's static presence text until the live fetch resolves — a group
   // chat has no single peer presence, so it keeps the "who's in it" text either way.
   const [presence, setPresence] = useState<string | undefined>(chat.presence);
 
   useEffect(() => {
     setMenuOpen(false);
+    setLabelsOpen(false);
   }, [chat.id]);
 
   useEffect(() => {
@@ -69,6 +72,16 @@ export function ChatHeader({
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
+                  setLabelsOpen(true);
+                }}
+              >
+                <TagIcon size={16} />
+                Labels
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
                   onToggleArchive();
                 }}
               >
@@ -98,6 +111,7 @@ export function ChatHeader({
               </button>
             </div>
           )}
+          {labelsOpen && <LabelsMenu chatId={chat.id} onClose={() => setLabelsOpen(false)} />}
         </div>
       </div>
     </header>

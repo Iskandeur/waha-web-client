@@ -54,6 +54,13 @@ export interface WahaNumberStatus {
   chatId: string | null;
 }
 
+export interface WahaLabel {
+  id: string;
+  name: string;
+  color: number;
+  colorHex: string;
+}
+
 export class WahaError extends Error {
   constructor(
     public status: number,
@@ -194,9 +201,6 @@ export const waha = {
   listSessions: (session = config.wahaSession) =>
     wahaFetch<unknown[]>("/api/sessions", {}, { kind: "read", session }),
 
-  listChats: (session = config.wahaSession) =>
-    wahaFetch<WahaChat[]>(`/api/${session}/chats`, {}, { kind: "read", session }),
-
   chatsOverview: (session = config.wahaSession, limit = 50) =>
     wahaFetch<WahaChat[]>(
       `/api/${session}/chats/overview?limit=${limit}`,
@@ -257,8 +261,8 @@ export const waha = {
 
   /** Inbox triage: hides a chat from the main list without deleting anything (WhatsApp's own
    *  "Archive" swipe action). Sending a new message to an archived chat un-archives it on
-   *  WhatsApp's side too, but we don't need to model that here — the next `listChats`/
-   *  `chatsOverview` read reflects reality either way. */
+   *  WhatsApp's side too, but we don't need to model that here — the next `chatsOverview`
+   *  read reflects reality either way. */
   archiveChat: (chatId: string, session = config.wahaSession) =>
     wahaFetch<void>(
       `/api/${session}/chats/${encodeURIComponent(chatId)}/archive`,
@@ -431,5 +435,64 @@ export const waha = {
       `/api/${session}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`,
       { method: "PUT", body: JSON.stringify({ text }) },
       { kind: "send", session, chatId },
+    ),
+
+  /** Labels (WhatsApp Business-style chat tagging) — WAHA scopes these under `/{session}/labels`,
+   *  unlike `contacts/all`'s `?session=` inconsistency above. */
+  listLabels: (session = config.wahaSession) =>
+    wahaFetch<WahaLabel[]>(`/api/${session}/labels`, {}, { kind: "read", session }),
+
+  createLabel: (
+    name: string,
+    color?: number,
+    colorHex?: string,
+    session = config.wahaSession,
+  ) =>
+    wahaFetch<WahaLabel>(
+      `/api/${session}/labels`,
+      { method: "POST", body: JSON.stringify({ name, color, colorHex }) },
+      { kind: "send", session },
+    ),
+
+  updateLabel: (
+    labelId: string,
+    name: string,
+    color?: number,
+    colorHex?: string,
+    session = config.wahaSession,
+  ) =>
+    wahaFetch<WahaLabel>(
+      `/api/${session}/labels/${encodeURIComponent(labelId)}`,
+      { method: "PUT", body: JSON.stringify({ name, color, colorHex }) },
+      { kind: "send", session },
+    ),
+
+  deleteLabel: (labelId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/labels/${encodeURIComponent(labelId)}`,
+      { method: "DELETE" },
+      { kind: "send", session },
+    ),
+
+  getChatLabels: (chatId: string, session = config.wahaSession) =>
+    wahaFetch<WahaLabel[]>(
+      `/api/${session}/labels/chats/${encodeURIComponent(chatId)}`,
+      {},
+      { kind: "read", session, chatId },
+    ),
+
+  /** Replaces the full label set on a chat (WAHA's own semantics — not additive). */
+  setChatLabels: (chatId: string, labelIds: string[], session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/labels/chats/${encodeURIComponent(chatId)}`,
+      { method: "PUT", body: JSON.stringify({ labels: labelIds.map((id) => ({ id })) }) },
+      { kind: "send", session, chatId },
+    ),
+
+  getChatsByLabel: (labelId: string, session = config.wahaSession) =>
+    wahaFetch<WahaChat[]>(
+      `/api/${session}/labels/${encodeURIComponent(labelId)}/chats`,
+      {},
+      { kind: "read", session },
     ),
 };
