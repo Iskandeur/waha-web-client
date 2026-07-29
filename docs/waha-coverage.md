@@ -65,7 +65,8 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | `POST /api/sendLocation` | Share a location (lat/lng pin) | **done (v7 pass)**, search picker added **(v9 pass)** | `waha.sendLocation` unchanged since v7; new `LocationPicker` component adds an address/place search (Nominatim/OpenStreetMap geocoding, a browser-side call — same "works identically in demo or real mode" pattern as the Geolocation API) alongside the existing "share my current position" button. This is the "carte" gap: picking an arbitrary searched-for place, not just your own GPS position. |
 | `POST /api/sendContactVcard` | Share a contact card | **done (this job)** | New `waha.sendContactVcard`; reuses the new contacts picker — see below. |
 | `POST /api/sendPoll`, `POST /api/sendPollVote` | Create/vote on a poll | **done (v9 pass)** | New `waha.sendPoll`/`waha.sendPollVote`; new `PollComposer` modal (question + 2-12 options + multiple-answers toggle) off the composer's new bar-chart button, and a `poll` message type in `MessageBubble` with per-option vote counts and click-to-vote. |
-| `POST /api/sendButtons`, `POST /api/sendList`, `POST send/buttons/reply` | Interactive button/list messages | todo | WhatsApp Business–style messaging; niche for a personal client, low priority. |
+| `POST /api/sendButtons`, `POST /api/sendList` | Interactive button/list messages | **done (v10 pass)** | New `waha.sendButtons`/`waha.sendList`; new `InteractiveComposer` modal (buttons/list mode toggle) off a new composer button, and `buttons`/`list` message types in `MessageBubble` — see "Added this job (v10 pass)" below. Send-only: capturing a real button-tap reply needs `send/buttons/reply` on the *receiving* side, not built this pass (see that row below). |
+| `POST send/buttons/reply` | Receive/relay a button-tap reply | todo | The other half of the interactive-messages gap above — capturing an incoming tap needs webhook plumbing this client doesn't have yet (no incoming-message listener at all, real or demo). |
 | `POST send/link-custom-preview`, `POST /api/sendLinkPreview` | Rich link previews with custom title/image | todo | Nice-to-have polish once basic sending is richer. |
 | `POST /api/forwardMessage` | Forward a message to another chat | todo | Needs a chat picker; valuable but not core-MVP. |
 | `POST /api/sendSeen` | Mark a specific message as seen | todo | Overlaps with chat-level `messages/read` (below); revisit together. |
@@ -79,7 +80,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 |---|---|---|---|
 | `GET chats/overview` (+`POST` batch variant) | Chat list (name, avatar, last message) | **done** (GET) / todo (POST batch) | `routes/chats.ts`; the `POST` batch form only matters at very large `ids` lists, low priority. |
 | `GET chats` | Raw chat list (session-scoped, no overview enrichment) | **removed (this job)** | `waha.listChats()` was dead code (no route/UI ever called it, fully superseded by `chatsOverview`) — deleted rather than wired up, per the previous job's flag. |
-| `GET chats/{chatId}/messages` | Load message history | **done**, transparency added **(this job)** | `routes/chats.ts`; response now wraps the array with `{ limit, truncated }` — see "History transparency" below. |
+| `GET chats/{chatId}/messages` | Load message history | **done**, transparency added (v7 pass), pagination added **(v10 pass)** | `routes/chats.ts`; response wraps the array with `{ limit, offset, truncated }`. `offset` now backs a "Load older messages" button in `ChatThread` — see "Added this job (v10 pass)" below. |
 | `GET chats/{chatId}/picture` | Chat/contact avatar image | **done** | New `waha.getChatPicture`. |
 | `DELETE chats/{chatId}` | Delete a whole conversation | **done (this job)** | New `waha.deleteChat`; confirm dialog client-side (`window.confirm`); see below. |
 | `DELETE chats/{chatId}/messages` | Clear all messages in a chat | **done (this job)** | New `waha.clearChatMessages`; same confirm-dialog caution as delete; see below. |
@@ -113,15 +114,15 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
 | `GET/POST labels`, `PUT/DELETE labels/{id}`, `GET/PUT labels/chats/{chatId}` | Organize chats with labels (WhatsApp Business feature) | **done**, rename/recolor UI added **(this job)** | `waha.listLabels`/`createLabel`/`updateLabel`/`deleteLabel`/`getChatLabels`/`setChatLabels`; `updateLabel` now has a UI (pencil icon → inline rename + palette) — see below. |
-| `GET labels/{id}/chats` | List every chat carrying a given label | **done (this job)** | New `waha.getChatsByLabel` (backend/route ready; no dedicated "filter chat list by label" UI yet — see What's next). |
+| `GET labels/{id}/chats` | List every chat carrying a given label | **done**, filter UI added **(v10 pass)** | `waha.getChatsByLabel` (route since the labels pass); new `LabelFilter` popover in `ChatList` finally gives it a caller — see "Added this job (v10 pass)" below. |
 
 ## Contacts
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
 | `GET contacts/all` | Contact list | **done**, picker UI added **(this job)** | `waha.listContacts` (`routes/contacts.ts`); now backs a real `ContactPicker` component used both for "start a new chat" and "share a contact" — see below. |
-| `GET contacts`, `GET contacts/{id}` (session-scoped) | Single-contact lookup | todo | Only useful once there's a contact-detail panel UI to call it from — no such panel exists yet (only the picker list). |
-| `GET contacts/about` | Contact's "about" text | **done (v9 pass)**, no dedicated UI | `waha.getContactAbout`, `GET /api/contacts/about?contactId=` — wired for future use; no contact-detail panel to show it in yet (see `GET contacts/{id}` above, same gap). |
+| `GET contacts` (`?contactId=`) | Single-contact lookup | **done (v10 pass)** | New `waha.getContact` (same `?session=` query-param scoping as `listContacts`/`checkNumberExists`), routed as `GET /api/contacts/:id`. Backs the new `ContactDetailPanel` — see "Added this job (v10 pass)" below. |
+| `GET contacts/about` | Contact's "about" text | **done (v9 pass)**, UI added **(v10 pass)** | `waha.getContactAbout`, `GET /api/contacts/about?contactId=` — now rendered in `ContactDetailPanel`. |
 | `GET contacts/profile-picture` | Contact avatar (non-chat-scoped variant) | **superseded** | Covered by the chat-scoped `chats/{chatId}/picture` we implemented this job — for a 1:1 DM, `chatId` *is* the contact's JID, so one endpoint serves both. |
 | `POST contacts/block`, `POST contacts/unblock` | Block/unblock a contact | **done (v9 pass)** | `waha.blockContact`/`unblockContact`, routed in `contacts.ts`; new "Block contact"/"Unblock contact" entry in `ChatHeader`'s menu (1:1 chats only). **Honesty note**: WAHA exposes no "is this contact blocked" getter, so `Chat.isBlocked` only ever reflects a toggle made from this client this session — it does not reflect real blocked status fetched from WhatsApp, same category of gap as the profile "about" field being write-only. |
 | `PUT contacts/{chatId}` | Create/update a contact | todo | Low priority; not core to a messaging-first client. |
@@ -182,7 +183,7 @@ future version, revisit.
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `POST media/convert/voice`, `POST media/convert/video` | Pre-convert recorded audio/video to WhatsApp's expected codec | **out of scope (for now)** | Only relevant once we build our own voice/video recording pipeline (see `sendVoice`/`sendVideo` above) — bundle with that future work rather than build standalone. |
+| `POST media/convert/voice`, `POST media/convert/video` | Pre-convert recorded audio/video to WhatsApp's expected codec | todo, deferred again **(v10 pass)** | Considered again this pass (the brief flagged voice transcoding as a candidate). Still not built: this deployment only runs against demo/mock data (see README, "self-hosted only" note) and against a real VPS deployment, so there's no live WAHA session in this job's environment to confirm the endpoint's actual request/response shape or the exact codec/container WhatsApp's servers reject the browser's native webm/opus output for. Guessing a schema here risks shipping a converter that silently does nothing (or errors) on a real deployment — worse than the honest status quo of sending the browser's native recording as-is. Revisit once a pass has live WAHA access to verify against. |
 
 ## Apps / integrations
 
@@ -500,26 +501,77 @@ mirrored in `demoApi`. New validators (`isValidPollName`, `isValidPollOptions`, 
 have their own unit tests; the block/unblock/about routes reuse the existing `isValidContactId`
 rather than duplicating it. **76 backend tests total (was 69)**.
 
+## Added this job (v10 pass)
+
+Brief (verbatim, paraphrased): peaufine les derniers points — polish what's left from the v9
+"what's next" list, prioritizing the two daily-usage irritants (pagination and a contact panel)
+first, interactive buttons/lists last (most exotic). Voice connection stays 100% mock — explicitly
+out of scope for this pass, a separate future decision.
+
+**1. Contact-detail panel** — new `ContactDetailPanel` component (avatar, name, number, "about",
+"in your contacts" status, block/unblock), opened from `ChatHeader`'s avatar/name (now a button)
+or its menu's new "Contact info" entry, for 1:1 chats. Backed by a new single-contact lookup,
+`waha.getContact` → `GET /api/contacts?contactId=&session=` (same query-param scoping as
+`listContacts`/`checkNumberExists`/`getContactAbout`), routed as `GET /api/contacts/:id`, plus the
+already-wired `getContactAbout`. Closes the missing UI slot both of those endpoints had been
+flagged as needing since the v9 pass.
+
+**2. Filter chat list by label** — new `LabelFilter` popover next to `ChatList`'s existing filter
+tabs, backed by `waha.getChatsByLabel` (`GET /api/labels/:id/chats`), which has had a route since
+the labels pass (v6) but no caller until now.
+
+**3. Message pagination** — `GET /api/chats/:chatId/messages` now accepts an `offset` query param
+(`isValidOffset` validates it: non-negative integer). `ChatThread` gained a "Load older messages"
+button that pages backwards using the message count already in state as the offset, de-duping by
+id and prepending the result. Scroll position is preserved (a `useLayoutEffect` adjusts `scrollTop`
+by exactly how much the content grew) instead of the thread jumping — only a genuinely new message
+at the bottom triggers the old auto-scroll-to-end behavior.
+
+**4. Interactive messages (`sendButtons`/`sendList`)** — done last, per the brief's own priority
+order (niche for a personal client). `waha.sendButtons`/`waha.sendList`, routed as `POST
+/api/chats/:chatId/buttons`/`.../list` with `isValidButtons` (1-3 buttons)/`isValidListSections`
+validators. New `InteractiveComposer` modal (buttons/list mode toggle, single-section list to keep
+the UI proportionate to the feature's priority) off a new composer button; new `buttons`/`list`
+message types rendered read-only in `MessageBubble` (this pass only builds the *send* side —
+capturing an incoming button-tap reply would need `send/buttons/reply` webhook plumbing this
+client doesn't have at all, see the Sending-messages table above). **Honesty note**: unlike the
+other three items above (which reuse already-verified endpoints or the previously-verified
+`getContactAbout`), this pass had no live WAHA session to confirm `sendButtons`/`sendList`'s exact
+request shape against — implemented from WAHA's documented schema, same "unconfirmed until tested
+against a live instance" category as `media/convert/voice` below, but shipped anyway (unlike that
+one) because a wrong guess here just 4xxs visibly through the existing error-banner path rather
+than silently doing nothing.
+
+All four: implemented behind `wahaFetch`/routed per the established pattern, mirrored in
+`demoApi`. New validators (`isValidOffset`, `isValidButtons`, `isValidListSections`) with their own
+unit tests. **82 backend tests total (was 76)**. VPS deployment re-verified live at the end of this
+pass (PIN gate still active, WAHA connection still 100% mock as instructed — see the job report).
+
+**Not done this job** (still open, not silently skipped): voice-note transcoding via
+`media/convert/voice` — deferred again, see the Media conversion table above for why (no live WAHA
+session available to verify the request/response shape against, same reasoning as the v9 pass);
+`send/buttons/reply` (the receiving half of interactive messages); `forwardMessage`; `sendSeen`;
+rich link previews; the batch `POST chats/overview` variant; `PUT contacts/{chatId}`; and the
+session-wide presence set/batch-read.
+
 ## What's next (highest-value gaps, not done this job)
 
-With voice/poll/map closed this pass, the remaining gaps are smaller and more scattered — no
-single "big three" left. In rough priority order: a **contact-detail panel** (the missing UI slot
-that would finally give `GET contacts/{id}`/`GET contacts/about` somewhere to render, and let
-`isBlocked` show real status if WAHA ever exposes a getter); a "filter chat list by label" view on
-top of the already-implemented `getChatsByLabel`; message pagination/infinite scroll (load older
-messages past the current 100-message window); voice-note transcoding via `media/convert/voice`
-(only matters if a real deployment hits a client that rejects the browser's native webm/ogg
-output); `sendButtons`/`sendList` (WhatsApp Business–style interactive messages, niche for a
-personal client); `forwardMessage` (needs a chat picker); `sendSeen` (overlaps chat-level
-`messages/read`); rich link previews (`sendLinkPreview`/`link-custom-preview`); the batch `POST
-chats/overview` variant; `PUT contacts/{chatId}` (create/update a contact); and the
-session-wide presence set/batch-read (`POST presence`/`GET presence`, as opposed to the per-chat
-presence already implemented). Communities and the various infra/admin-only endpoints
-(sessions lifecycle, API keys, Chatwoot, screenshot/debug, server/stop) stay permanently out of
-scope for the reasons stated in their own sections above — not a priority-ordering choice.
+With the daily-usage irritants (pagination, contact panel, label filter) and interactive messages
+closed this pass, the remaining gaps are all smaller, lower-priority, and independent of each
+other — no natural next "batch." In rough priority order: voice-note transcoding via
+`media/convert/voice` (blocked on live WAHA access to verify against, not effort — see above);
+`send/buttons/reply` (needs an incoming-message listener this client doesn't have at all, real or
+demo — a bigger architectural piece than the other items here); `forwardMessage` (needs a chat
+picker — the existing `ContactPicker` component could likely be adapted); `sendSeen` (overlaps
+chat-level `messages/read`, revisit together); rich link previews (`sendLinkPreview`/
+`link-custom-preview`); the batch `POST chats/overview` variant; `PUT contacts/{chatId}`
+(create/update a contact); and the session-wide presence set/batch-read (`POST presence`/`GET
+presence`). Communities and the various infra/admin-only endpoints (sessions lifecycle, API keys,
+Chatwoot, screenshot/debug, server/stop) stay permanently out of scope for the reasons stated in
+their own sections above — not a priority-ordering choice.
 
-**Coverage milestone**: as of this pass, every endpoint in WAHA's 138-path OpenAPI spec has been
+**Coverage milestone** (unchanged since v9): every endpoint in WAHA's 138-path OpenAPI spec is
 individually triaged into **done**, **todo** (a real, worth-building gap), or **out of scope**
 (with a stated reason: not exposed, too high-risk, or a deliberate product boundary) — nothing is
-unaccounted for. The remaining **todo** list above is short and each item is small; there is no
-more "undiscovered" surface left to map.
+unaccounted for. The remaining **todo** list above is short and each item is small and independent;
+there is no more "undiscovered" surface left to map.
