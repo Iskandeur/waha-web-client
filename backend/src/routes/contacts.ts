@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { waha } from "../waha-client.js";
+import { isValidContactId } from "./chats.js";
 
 /** A phone number "shaped" enough to send to WAHA — digits only, WhatsApp's shortest real
  *  numbers run ~8 digits (a `+` prefix or spaces are stripped by the caller before this). */
@@ -21,4 +22,36 @@ export async function contactsRoutes(app: FastifyInstance) {
       return waha.checkNumberExists(phone);
     },
   );
+
+  app.get<{ Querystring: { contactId?: string } }>(
+    "/api/contacts/about",
+    async (req, reply) => {
+      const { contactId } = req.query;
+      if (!isValidContactId(contactId)) {
+        reply.code(400);
+        return { error: "contactId is required" };
+      }
+      return waha.getContactAbout(contactId);
+    },
+  );
+
+  app.post<{ Body: { contactId?: string } }>("/api/contacts/block", async (req, reply) => {
+    const { contactId } = req.body;
+    if (!isValidContactId(contactId)) {
+      reply.code(400);
+      return { error: "contactId is required" };
+    }
+    await waha.blockContact(contactId);
+    return { ok: true };
+  });
+
+  app.post<{ Body: { contactId?: string } }>("/api/contacts/unblock", async (req, reply) => {
+    const { contactId } = req.body;
+    if (!isValidContactId(contactId)) {
+      reply.code(400);
+      return { error: "contactId is required" };
+    }
+    await waha.unblockContact(contactId);
+    return { ok: true };
+  });
 }
