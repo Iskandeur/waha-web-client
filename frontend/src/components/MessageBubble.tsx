@@ -1,12 +1,18 @@
 import type { Message } from "../api.js";
 import { formatClockTime } from "../format.js";
 import { StatusTicks } from "./StatusTicks.js";
-import { FileIcon, ImageIcon, PlayIcon } from "./icons.js";
+import { MessageActions } from "./MessageActions.js";
+import { FileIcon, ImageIcon, PlayIcon, StarIcon } from "./icons.js";
 
 function MessageContent({ m }: { m: Message }) {
   switch (m.type) {
     case "image":
-      return (
+      return m.mediaUrl ? (
+        <div className="message-media message-media-image message-media-image-real">
+          <img src={m.mediaUrl} alt={m.body || "Image"} className="message-image" />
+          {m.body && <div className="message-caption">{m.body}</div>}
+        </div>
+      ) : (
         <div className="message-media message-media-image">
           <ImageIcon size={28} />
           {m.body && <div className="message-caption">{m.body}</div>}
@@ -39,20 +45,27 @@ function MessageContent({ m }: { m: Message }) {
 export function MessageBubble({
   message,
   showSender,
+  onReact,
+  onToggleStar,
 }: {
   message: Message;
   showSender?: boolean;
+  onReact: (emoji: string) => void;
+  onToggleStar: () => void;
 }) {
   return (
     <div className={message.fromMe ? "message message-mine" : "message"}>
+      <MessageActions message={message} onReact={onReact} onToggleStar={onToggleStar} />
       {showSender && message.senderName && (
         <div className="message-sender">{message.senderName}</div>
       )}
       <MessageContent m={message} />
       <div className="message-meta">
+        {message.starred && <StarIcon size={12} filled className="message-star-badge" />}
         <span className="message-time">{formatClockTime(message.timestamp)}</span>
         {message.fromMe && <StatusTicks status={message.status} />}
       </div>
+      {message.reaction && <div className="message-reaction-badge">{message.reaction}</div>}
     </div>
   );
 }

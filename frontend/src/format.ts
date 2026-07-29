@@ -45,7 +45,7 @@ export interface PreviewSource {
 }
 
 /** One-line preview for the chat list and for a message's own summary — media types get a
- *  short icon+label instead of raw body text (there is no real media in this project). */
+ *  short icon+label instead of raw body text. */
 export function messagePreview(m: PreviewSource): string {
   switch (m.type) {
     case "image":

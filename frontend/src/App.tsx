@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, DEMO_MODE, type Chat, type Message } from "./api.js";
+import { api, DEMO_MODE, type Chat, type Message, type OutgoingFile } from "./api.js";
 import { ChatList } from "./components/ChatList.js";
 import { ChatHeader } from "./components/ChatHeader.js";
 import { ChatThread } from "./components/ChatThread.js";
@@ -51,6 +51,42 @@ export default function App() {
     }
   }
 
+  async function handleSendImage(file: OutgoingFile) {
+    if (!selectedId) return;
+    try {
+      await api.sendImage(selectedId, file);
+      setMessages(await api.getMessages(selectedId));
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // Optimistic: flip the UI immediately, revert if the WAHA call actually fails (guard block,
+  // network error, ...) rather than making every reaction/star wait on a round trip.
+  async function handleReact(messageId: string, emoji: string) {
+    if (!selectedId) return;
+    const prev = messages;
+    setMessages((ms) => ms.map((m) => (m.id === messageId ? { ...m, reaction: emoji || undefined } : m)));
+    try {
+      await api.setReaction(selectedId, messageId, emoji);
+    } catch (err) {
+      setMessages(prev);
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleToggleStar(messageId: string, starred: boolean) {
+    if (!selectedId) return;
+    const prev = messages;
+    setMessages((ms) => ms.map((m) => (m.id === messageId ? { ...m, starred } : m)));
+    try {
+      await api.setStar(selectedId, messageId, starred);
+    } catch (err) {
+      setMessages(prev);
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const selectedChat = chats.find((c) => c.id === selectedId) ?? null;
 
   return (
@@ -68,13 +104,22 @@ export default function App() {
           {selectedChat ? (
             <>
               <ChatHeader chat={selectedChat} />
-              <ChatThread messages={messages} />
+              <ChatThread
+                messages={messages}
+                onReact={handleReact}
+                onToggleStar={handleToggleStar}
+              />
               {sendError && <div className="send-error-banner">Message not sent: {sendError}</div>}
               <CommandBar
                 run={(instruction) => api.runAiCommand(selectedChat.id, instruction)}
                 onResult={setDraft}
               />
-              <Composer value={draft} onChange={setDraft} onSend={handleSend} />
+              <Composer
+                value={draft}
+                onChange={setDraft}
+                onSend={handleSend}
+                onSendImage={handleSendImage}
+              />
             </>
           ) : (
             <WelcomeScreen />

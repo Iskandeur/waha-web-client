@@ -222,6 +222,10 @@ input {
   letter-spacing: 0.02em;
 }
 
+.avatar-picture {
+  object-fit: cover;
+}
+
 /* ---- Ticks ---- */
 
 .ticks {
@@ -299,6 +303,7 @@ input {
 }
 
 .message {
+  position: relative;
   align-self: flex-start;
   background: #202c33;
   padding: 6px 9px 8px;
@@ -353,9 +358,104 @@ input {
   min-width: 160px;
 }
 
+.message-media-image-real {
+  padding: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.message-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.message-media-image-real .message-caption {
+  padding: 6px 4px 0;
+}
+
 .message-caption {
   font-size: 0.85em;
   margin-top: 6px;
+}
+
+/* ---- Reactions / star ---- */
+
+.message-actions {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  background: #233138;
+  border-radius: 999px;
+  padding: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.message:hover .message-actions {
+  display: flex;
+}
+
+.message-action-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aebac1;
+}
+
+.message-action-btn:hover {
+  background: #2a3942;
+}
+
+.message-action-btn.active {
+  color: #ffc043;
+}
+
+.reaction-picker {
+  position: absolute;
+  top: -38px;
+  right: 0;
+  display: flex;
+  gap: 2px;
+  background: #233138;
+  border-radius: 999px;
+  padding: 4px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.reaction-picker-option {
+  font-size: 1.05em;
+  padding: 2px 3px;
+  border-radius: 50%;
+}
+
+.reaction-picker-option:hover {
+  background: #2a3942;
+}
+
+.message-reaction-badge {
+  position: absolute;
+  bottom: -10px;
+  right: 8px;
+  background: #2a3942;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-size: 0.9em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.message-star-badge {
+  color: #ffc043;
+  flex: none;
 }
 
 .message-media-file {
@@ -459,6 +559,10 @@ input {
 .command-bar-error {
   color: #f15c6d;
   font-size: 0.85em;
+}
+
+.composer-file-input {
+  display: none;
 }
 
 .composer-icon-btn {

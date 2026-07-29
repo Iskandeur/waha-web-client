@@ -1,4 +1,4 @@
-import type { Chat, Message, MessageStatus, MessageType } from "./api.js";
+import type { Chat, Message, MessageStatus, MessageType, OutgoingFile } from "./api.js";
 import { messagePreview } from "./format.js";
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -171,6 +171,43 @@ export const demoApi = {
     }
     return delay(message);
   },
+
+  sendImage: (chatId: string, file: OutgoingFile, caption?: string) => {
+    const message: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      timestamp: Math.floor(Date.now() / 1000),
+      fromMe: true,
+      type: "image",
+      body: caption ?? "",
+      mediaUrl: "url" in file ? file.url : `data:${file.mimetype};base64,${file.data}`,
+      status: "sent",
+    };
+    (DEMO_MESSAGES[chatId] ??= []).push(message);
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = messagePreview(message);
+      chat.lastMessageAt = message.timestamp;
+      chat.lastMessageFromMe = true;
+      chat.lastMessageStatus = "sent";
+      chat.unreadCount = 0;
+    }
+    return delay(message);
+  },
+
+  setReaction: (chatId: string, messageId: string, reaction: string) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message) message.reaction = reaction || undefined;
+    return delay(undefined);
+  },
+
+  setStar: (chatId: string, messageId: string, star: boolean) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message) message.starred = star;
+    return delay(undefined);
+  },
+
+  // The public demo never has a real profile picture — always fall back to the initials avatar.
+  getChatPicture: (_chatId: string) => delay({ url: null }),
 
   runAiCommand: (_chatId: string, instruction: string) =>
     delay({ suggestion: demoAiCommand(instruction) }, 500),

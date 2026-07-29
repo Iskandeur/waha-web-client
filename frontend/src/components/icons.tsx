@@ -7,14 +7,15 @@ type IconProps = { size?: number; className?: string };
 function Svg({
   size = 20,
   className,
+  fill = "none",
   children,
-}: IconProps & { children: ReactNode }) {
+}: IconProps & { fill?: string; children: ReactNode }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={fill}
       stroke="currentColor"
       strokeWidth={1.8}
       strokeLinecap="round"
@@ -134,6 +135,14 @@ export function PlayIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="M6 4l14 8-14 8V4Z" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+export function StarIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props} fill={filled ? "currentColor" : "none"}>
+      <path d="M12 2.5l2.9 6.1 6.6.8-4.8 4.6 1.2 6.6-5.9-3.2-5.9 3.2 1.2-6.6-4.8-4.6 6.6-.8Z" />
     </Svg>
   );
 }

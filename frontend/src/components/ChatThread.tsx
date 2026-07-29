@@ -7,7 +7,15 @@ function senderKey(m: Message): string {
   return m.fromMe ? "me" : (m.senderName ?? "them");
 }
 
-export function ChatThread({ messages }: { messages: Message[] }) {
+export function ChatThread({
+  messages,
+  onReact,
+  onToggleStar,
+}: {
+  messages: Message[];
+  onReact: (messageId: string, emoji: string) => void;
+  onToggleStar: (messageId: string, starred: boolean) => void;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,7 +35,12 @@ export function ChatThread({ messages }: { messages: Message[] }) {
                 <span>{formatDateSeparator(m.timestamp)}</span>
               </div>
             )}
-            <MessageBubble message={m} showSender={showSender} />
+            <MessageBubble
+              message={m}
+              showSender={showSender}
+              onReact={(emoji) => onReact(m.id, emoji)}
+              onToggleStar={() => onToggleStar(m.id, !m.starred)}
+            />
           </div>
         );
       })}

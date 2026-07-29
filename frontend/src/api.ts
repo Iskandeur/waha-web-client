@@ -28,10 +28,19 @@ export interface Message {
   type: MessageType;
   body: string;
   mediaName?: string;
+  mediaUrl?: string;
   durationSec?: number;
   status?: MessageStatus;
+  reaction?: string;
+  starred?: boolean;
   [key: string]: unknown;
 }
+
+/** Either a remote URL or inline base64 data, both tagged with a mimetype — mirrors WAHA's
+ *  `MessageImageRequest.file` shape (see backend `WahaFileInput`). */
+export type OutgoingFile =
+  | { mimetype: string; filename?: string; url: string }
+  | { mimetype: string; filename?: string; data: string };
 
 export interface SendError {
   error: string;
@@ -72,6 +81,38 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     }).then((r) => json<Message>(r)),
+
+  sendImage: (chatId: string, file: OutgoingFile, caption?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file, caption }),
+    }).then((r) => json<Message>(r)),
+
+  setReaction: (chatId: string, messageId: string, reaction: string) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/reaction`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reaction }),
+      },
+    ).then((r) => json<void>(r)),
+
+  setStar: (chatId: string, messageId: string, star: boolean) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/star`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ star }),
+      },
+    ).then((r) => json<void>(r)),
+
+  getChatPicture: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/picture`).then((r) =>
+      json<{ url: string | null }>(r),
+    ),
 
   runAiCommand: (chatId: string, instruction: string) =>
     fetch("/api/ai/command", {
