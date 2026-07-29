@@ -261,7 +261,10 @@ Still open / not done in this pass (honest gaps, not silently skipped):
 ## Roadmap
 
 1. Verify end-to-end against a real disposable WAHA instance — both the UI's response-shape
-   assumptions and the guard's behavior under real WAHA errors/rate-limit responses.
+   assumptions and the guard's behavior under real WAHA errors/rate-limit responses. See
+   [`docs/real-connection-plan.md`](docs/real-connection-plan.md) for the staged plan (and the
+   `WAHA_REAL_CONNECTION*` guard flags, off by default) drafted for connecting to a specific
+   real, valued session safely.
 2. Real media upload/download (currently placeholder shapes only).
 3. Multi-session support in the UI (switch between linked WhatsApp accounts).
 4. More AI command bar actions: natural-language search across chats, quick-reply
