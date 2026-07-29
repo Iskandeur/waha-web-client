@@ -1,4 +1,6 @@
-# waha-web-client
+# WhatsApp#
+
+> Name note: repo/slug is `whatsapp-sharp`, stylized **WhatsApp#** (à la C#/F#).
 
 A self-hosted WhatsApp web client: a small Node/TypeScript backend that talks to a
 [WAHA](https://waha.devlike.pro/) (WhatsApp HTTP API) instance, and a React SPA on top —
@@ -25,7 +27,7 @@ behavior — see [Safety](#safety) below for what that looks like in practice.
 ## Architecture
 
 ```
-waha-web-client/
+whatsapp-sharp/
 ├── backend/    Fastify + TypeScript. Wraps the WAHA REST API and exposes a small
 │               JSON API to the frontend: sessions, chats, messages, send, and the
 │               AI command endpoint (which shells out to `claude -p`).
@@ -91,6 +93,21 @@ scan the WAHA session's QR code as usual to link a WhatsApp account to the test 
 This project was built by someone who maintains an always-on WhatsApp automation agent for
 personal use, and who has a documented, permanent number ban from ignoring exactly the
 rules above. That lesson is the reason this list exists.
+
+## Live demo
+
+**https://iskandeur.github.io/whatsapp-sharp/**
+
+A static, frontend-only build published via GitHub Pages (GitHub Actions workflow:
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)), with **mock data —
+no backend, no WAHA, no real WhatsApp connection of any kind**. This exists purely so the UI can
+be seen without standing up infrastructure. The demo banner in the UI says so explicitly.
+
+Demo mode is the **default** for the frontend build (`VITE_DEMO_MODE` unset or anything other
+than `"false"`) — a safety choice, not just a deployment detail: it means an accidental deploy
+of this frontend can never reach a real backend/WAHA instance unless someone deliberately opts
+out. For real usage (self-hosted, against your own disposable WAHA instance), set
+`VITE_DEMO_MODE=false` in `frontend/.env` before building/running.
 
 ## Status / checkpoint
 

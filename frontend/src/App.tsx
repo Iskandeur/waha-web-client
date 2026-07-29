@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type Chat, type Message } from "./api.js";
+import { api, DEMO_MODE, type Chat, type Message } from "./api.js";
 import { ChatList } from "./components/ChatList.js";
 import { ChatThread } from "./components/ChatThread.js";
 import { Composer } from "./components/Composer.js";
@@ -28,23 +28,30 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <ChatList chats={chats} selectedId={selectedId} onSelect={setSelectedId} />
-      </aside>
-      <main className="main">
-        {selectedId ? (
-          <>
-            <ChatThread messages={messages} />
-            <CommandBar
-              run={(instruction) => api.runAiCommand(selectedId, instruction)}
-              onResult={setDraft}
-            />
-            <Composer value={draft} onSend={handleSend} />
-          </>
-        ) : (
-          <div className="empty-state">Select a chat to get started.</div>
-        )}
-      </main>
+      {DEMO_MODE && (
+        <div className="demo-banner">
+          🎭 Demo — mock data only, not connected to any real WhatsApp account
+        </div>
+      )}
+      <div className="app-body">
+        <aside className="sidebar">
+          <ChatList chats={chats} selectedId={selectedId} onSelect={setSelectedId} />
+        </aside>
+        <main className="main">
+          {selectedId ? (
+            <>
+              <ChatThread messages={messages} />
+              <CommandBar
+                run={(instruction) => api.runAiCommand(selectedId, instruction)}
+                onResult={setDraft}
+              />
+              <Composer value={draft} onSend={handleSend} />
+            </>
+          ) : (
+            <div className="empty-state">Select a chat to get started.</div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

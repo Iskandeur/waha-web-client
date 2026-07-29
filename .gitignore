@@ -5,3 +5,5 @@ dist/
 .DS_Store
 npm-debug.log*
 waha-data/
+*.tsbuildinfo
+package-lock.json

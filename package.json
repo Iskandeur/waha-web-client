@@ -1,5 +1,5 @@
 {
-  "name": "waha-web-client",
+  "name": "whatsapp-sharp",
   "private": true,
   "version": "0.1.0",
   "description": "Self-hosted WhatsApp web client (WAHA backend) with an AI command bar",

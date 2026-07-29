@@ -1,3 +1,5 @@
+import { demoApi } from "./demo-data.js";
+
 export interface Chat {
   id: string;
   name?: string;
@@ -18,7 +20,11 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const api = {
+/** Demo mode is the default: it never calls a backend or a real WAHA/WhatsApp session.
+ *  Set VITE_DEMO_MODE=false (self-hosted, real WAHA instance) to use the real API. */
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE !== "false";
+
+const realApi = {
   listChats: () => fetch("/api/chats").then((r) => json<Chat[]>(r)),
 
   getMessages: (chatId: string) =>
@@ -40,3 +46,5 @@ export const api = {
       body: JSON.stringify({ chatId, instruction }),
     }).then((r) => json<{ suggestion: string }>(r)),
 };
+
+export const api = DEMO_MODE ? demoApi : realApi;
