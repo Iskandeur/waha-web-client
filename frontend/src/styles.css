@@ -124,6 +124,54 @@ input {
   color: #00a884;
 }
 
+.label-filter {
+  position: relative;
+}
+
+.label-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.label-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 160px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #233138;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.label-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 0.88em;
+  color: #e9edef;
+  white-space: nowrap;
+}
+
+.label-filter-option:hover {
+  background: #2a3942;
+}
+
+.label-filter-empty {
+  padding: 8px 10px;
+  color: #8696a0;
+  font-size: 0.85em;
+}
+
 .chat-list {
   list-style: none;
   margin: 0;
@@ -310,6 +358,19 @@ input {
   padding: 10px 16px;
   border-bottom: 1px solid #222d34;
   flex: none;
+}
+
+.chat-header-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.chat-header-identity:hover .chat-header-name {
+  text-decoration: underline;
 }
 
 .chat-header-info {
@@ -570,6 +631,27 @@ input {
   border-radius: 8px;
   padding: 6px 12px;
   margin: 4px 0 10px;
+}
+
+.history-load-older {
+  align-self: center;
+  margin: 4px 0 10px;
+}
+
+.history-load-older button {
+  font-size: 0.8em;
+  color: #00a884;
+  background: rgba(32, 44, 51, 0.85);
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+.history-load-older button:disabled {
+  color: #8696a0;
+}
+
+.history-load-older button:not(:disabled):hover {
+  background: #233138;
 }
 
 .date-separator {
@@ -1231,6 +1313,67 @@ input {
   color: #8696a0;
   font-size: 0.78em;
   margin-top: 6px;
+}
+
+/* ---- Interactive messages (buttons / list) ---- */
+
+.message-media-buttons,
+.message-media-list {
+  min-width: 220px;
+}
+
+.message-interactive-footer {
+  color: #8696a0;
+  font-size: 0.78em;
+  margin-top: 4px;
+}
+
+.message-interactive-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.message-interactive-button {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  background: #1f2c34;
+  color: #00a884;
+  font-size: 0.88em;
+  text-align: center;
+}
+
+.message-interactive-button:disabled {
+  cursor: default;
+}
+
+.message-list-section {
+  margin-top: 8px;
+}
+
+.message-list-section-title {
+  font-size: 0.78em;
+  color: #8696a0;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.message-list-row {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #1f2c34;
+  margin-bottom: 4px;
+}
+
+.message-list-row-title {
+  font-size: 0.9em;
+}
+
+.message-list-row-description {
+  font-size: 0.78em;
+  color: #8696a0;
 }
 
 /* ---- Location picker ---- */

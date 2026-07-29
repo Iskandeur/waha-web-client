@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Chat } from "../api.js";
 import { formatPresence } from "../format.js";
 import { Avatar } from "./Avatar.js";
+import { ContactDetailPanel } from "./ContactDetailPanel.js";
 import { GroupPanel } from "./GroupPanel.js";
 import {
   ArchiveIcon,
@@ -35,6 +36,7 @@ export function ChatHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [groupPanelOpen, setGroupPanelOpen] = useState(false);
+  const [contactPanelOpen, setContactPanelOpen] = useState(false);
   // Falls back to the chat list's static presence text until the live fetch resolves — a group
   // chat has no single peer presence, so it keeps the "who's in it" text either way.
   const [presence, setPresence] = useState<string | undefined>(chat.presence);
@@ -43,6 +45,7 @@ export function ChatHeader({
     setMenuOpen(false);
     setLabelsOpen(false);
     setGroupPanelOpen(false);
+    setContactPanelOpen(false);
   }, [chat.id]);
 
   useEffect(() => {
@@ -67,11 +70,17 @@ export function ChatHeader({
 
   return (
     <header className="chat-header">
-      <Avatar initials={chat.avatarInitials} color={chat.avatarColor} size={40} src={pictureUrl} />
-      <div className="chat-header-info">
-        <div className="chat-header-name">{chat.name}</div>
-        {presence && <div className="chat-header-presence">{presence}</div>}
-      </div>
+      <button
+        type="button"
+        className="chat-header-identity"
+        onClick={() => (chat.isGroup ? setGroupPanelOpen(true) : setContactPanelOpen(true))}
+      >
+        <Avatar initials={chat.avatarInitials} color={chat.avatarColor} size={40} src={pictureUrl} />
+        <div className="chat-header-info">
+          <div className="chat-header-name">{chat.name}</div>
+          {presence && <div className="chat-header-presence">{presence}</div>}
+        </div>
+      </button>
       <div className="chat-header-actions">
         <SearchIcon size={19} />
         <div className="chat-header-menu-wrap">
@@ -85,7 +94,7 @@ export function ChatHeader({
           </button>
           {menuOpen && (
             <div className="chat-header-menu">
-              {chat.isGroup && (
+              {chat.isGroup ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -95,6 +104,17 @@ export function ChatHeader({
                 >
                   <UsersIcon size={16} />
                   Group info
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setContactPanelOpen(true);
+                  }}
+                >
+                  <UsersIcon size={16} />
+                  Contact info
                 </button>
               )}
               <button
@@ -165,6 +185,13 @@ export function ChatHeader({
             setGroupPanelOpen(false);
             onGroupLeftOrDeleted(chat.id);
           }}
+        />
+      )}
+      {contactPanelOpen && (
+        <ContactDetailPanel
+          chat={chat}
+          onClose={() => setContactPanelOpen(false)}
+          onToggleBlock={onToggleBlock}
         />
       )}
     </header>

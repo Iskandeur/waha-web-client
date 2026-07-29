@@ -98,6 +98,24 @@ export interface WahaProfile {
   name: string;
 }
 
+/** Matches WAHA's documented `sendButtons` request shape (WhatsApp Business–style quick-reply
+ *  buttons): a flat list of `{ type: "reply", id, text }` entries. */
+export interface WahaButton {
+  id: string;
+  text: string;
+}
+
+export interface WahaListRow {
+  rowId: string;
+  title: string;
+  description?: string;
+}
+
+export interface WahaListSection {
+  title: string;
+  rows: WahaListRow[];
+}
+
 export class WahaError extends Error {
   constructor(
     public status: number,
@@ -293,9 +311,12 @@ export const waha = {
       { kind: "read", session },
     ),
 
-  getMessages: (chatId: string, session = config.wahaSession, limit = 100) =>
+  /** `offset` backs "load older messages": WAHA's own `GET .../messages` query accepts
+   *  `limit`/`offset` (no cursor/token — a plain page-through-the-store pair), so passing a
+   *  growing offset walks further back into history a page at a time. */
+  getMessages: (chatId: string, session = config.wahaSession, limit = 100, offset = 0) =>
     wahaFetch<WahaMessage[]>(
-      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`,
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}&offset=${offset}`,
       {},
       { kind: "read", session, chatId },
     ),
@@ -323,6 +344,17 @@ export const waha = {
   checkNumberExists: (phone: string, session = config.wahaSession) =>
     wahaFetch<WahaNumberStatus>(
       `/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(session)}`,
+      {},
+      { kind: "read", session },
+    ),
+
+  /** Single-contact lookup — same `?session=` query-param scoping as `listContacts`/
+   *  `checkNumberExists`/`getContactAbout` above. Backs the new contact-detail panel (the
+   *  missing UI slot this endpoint had no caller for since it was flagged "todo" in the v9
+   *  coverage pass). */
+  getContact: (contactId: string, session = config.wahaSession) =>
+    wahaFetch<WahaContact>(
+      `/api/contacts?contactId=${encodeURIComponent(contactId)}&session=${encodeURIComponent(session)}`,
       {},
       { kind: "read", session },
     ),
@@ -943,5 +975,57 @@ export const waha = {
       `/api/${session}/profile/picture`,
       { method: "DELETE" },
       { kind: "send", session },
+    ),
+
+  // --- Interactive messages (WhatsApp Business–style) ---------------------------------------
+  // Niche for a personal client (per the coverage doc, lowest priority of the remaining
+  // gaps) but still real product surface WAHA exposes. Same guard path as other sends — an
+  // interactive message is exactly as visible to WhatsApp's abuse detection as a text one.
+
+  /** Quick-reply buttons — up to a handful of `{id, text}` choices under a body/footer. */
+  sendButtons: (
+    chatId: string,
+    body: string,
+    buttons: WahaButton[],
+    footer?: string,
+    session = config.wahaSession,
+  ) =>
+    sendGuarded(chatId, body, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendButtons",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            session,
+            chatId,
+            body,
+            footer,
+            buttons: buttons.map((b) => ({ type: "reply", id: b.id, text: b.text })),
+          }),
+        },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
+  /** A tappable list grouped into sections, each with titled rows — WhatsApp's other
+   *  interactive-message type (richer than buttons: more options, optional per-row
+   *  description). */
+  sendList: (
+    chatId: string,
+    body: string,
+    buttonText: string,
+    sections: WahaListSection[],
+    footer?: string,
+    session = config.wahaSession,
+  ) =>
+    sendGuarded(chatId, body, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendList",
+        {
+          method: "POST",
+          body: JSON.stringify({ session, chatId, body, footer, buttonText, sections }),
+        },
+        { kind: "send", session, chatId },
+      ),
     ),
 };

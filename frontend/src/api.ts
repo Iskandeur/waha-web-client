@@ -9,7 +9,25 @@ export type MessageType =
   | "video"
   | "location"
   | "contact"
-  | "poll";
+  | "poll"
+  | "buttons"
+  | "list";
+
+export interface MessageButton {
+  id: string;
+  text: string;
+}
+
+export interface ListRow {
+  rowId: string;
+  title: string;
+  description?: string;
+}
+
+export interface ListSection {
+  title: string;
+  rows: ListRow[];
+}
 
 /** One option in a poll message, with the voter ids (JIDs) that picked it — mirrors what a
  *  `sendPollVote` roundtrip would let us reconstruct locally (WAHA gives us the vote events,
@@ -65,6 +83,10 @@ export interface Message {
   pollName?: string;
   pollOptions?: PollOption[];
   pollMultipleAnswers?: boolean;
+  footer?: string;
+  buttons?: MessageButton[];
+  listButtonText?: string;
+  listSections?: ListSection[];
   [key: string]: unknown;
 }
 
@@ -97,6 +119,10 @@ export const PIN_DURATIONS = {
 export const POLL_MIN_OPTIONS = 2;
 export const POLL_MAX_OPTIONS = 12;
 
+/** WhatsApp Business limits quick-reply buttons to 3 per message — mirrors the backend's
+ *  `BUTTONS_MAX`. */
+export const BUTTONS_MAX = 3;
+
 /** Either a remote URL or inline base64 data, both tagged with a mimetype — mirrors WAHA's
  *  `MessageImageRequest.file` shape (see backend `WahaFileInput`). */
 export type OutgoingFile =
@@ -115,6 +141,7 @@ export interface SendError {
 export interface MessagesResult {
   messages: Message[];
   limit: number;
+  offset: number;
   truncated: boolean;
 }
 
@@ -123,6 +150,11 @@ export interface Contact {
   name?: string;
   pushname?: string;
   number?: string;
+  isMyContact?: boolean;
+}
+
+export interface ContactAbout {
+  about: string | null;
 }
 
 export interface Group {
@@ -174,10 +206,12 @@ export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE !== "false";
 const realApi = {
   listChats: () => fetch("/api/chats").then((r) => json<Chat[]>(r)),
 
-  getMessages: (chatId: string) =>
-    fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`).then((r) =>
-      json<MessagesResult>(r),
-    ),
+  /** `offset` walks further back into history a page at a time — "load older messages" passes
+   *  the count already loaded so far. */
+  getMessages: (chatId: string, offset = 0) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages${offset ? `?offset=${offset}` : ""}`,
+    ).then((r) => json<MessagesResult>(r)),
 
   sendMessage: (chatId: string, text: string) =>
     fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
@@ -338,12 +372,42 @@ const realApi = {
       body: JSON.stringify({ text }),
     }).then((r) => json<{ ok: true }>(r)),
 
+  sendButtons: (chatId: string, body: string, buttons: MessageButton[], footer?: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/buttons`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, buttons, footer }),
+    }).then((r) => json<Message>(r)),
+
+  sendList: (
+    chatId: string,
+    body: string,
+    buttonText: string,
+    sections: ListSection[],
+    footer?: string,
+  ) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/list`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, buttonText, sections, footer }),
+    }).then((r) => json<Message>(r)),
+
   checkNumberExists: (phone: string) =>
     fetch(`/api/contacts/check-exists?phone=${encodeURIComponent(phone)}`).then((r) =>
       json<NumberStatus>(r),
     ),
 
   listContacts: () => fetch("/api/contacts").then((r) => json<Contact[]>(r)),
+
+  /** Backs `ContactDetailPanel` — single-contact lookup (name/number/isMyContact), the missing
+   *  UI slot `GET contacts/{id}` had no caller for since it was wired backend-side. */
+  getContact: (contactId: string) =>
+    fetch(`/api/contacts/${encodeURIComponent(contactId)}`).then((r) => json<Contact>(r)),
+
+  getContactAbout: (contactId: string) =>
+    fetch(`/api/contacts/about?contactId=${encodeURIComponent(contactId)}`).then((r) =>
+      json<ContactAbout>(r),
+    ),
 
   blockContact: (contactId: string) =>
     fetch("/api/contacts/block", {
@@ -396,6 +460,13 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ labelIds }),
     }).then((r) => json<{ ok: true }>(r)),
+
+  /** Backs the chat list's "filter by label" view — just the ids, matched against the chats
+   *  already held in state rather than trusting WAHA's own (unenriched) chat shape here. */
+  getChatsByLabel: (labelId: string) =>
+    fetch(`/api/labels/${encodeURIComponent(labelId)}/chats`).then((r) =>
+      json<{ id: string }[]>(r),
+    ),
 
   // --- Groups ------------------------------------------------------------------------------
 
