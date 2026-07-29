@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { api, DEMO_MODE, PIN_DURATIONS, type Chat, type Message, type OutgoingFile } from "./api.js";
+import {
+  api,
+  DEMO_MODE,
+  PIN_DURATIONS,
+  type Chat,
+  type Contact,
+  type Message,
+  type OutgoingFile,
+} from "./api.js";
 import { ChatList } from "./components/ChatList.js";
 import { ChatHeader } from "./components/ChatHeader.js";
 import { ChatThread } from "./components/ChatThread.js";
@@ -19,8 +27,19 @@ export default function App() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Real, non-estimated signal from the backend: `truncated` is true only when the fetch hit
+  // its cap (see routes/chats.ts) — WAHA's own API returns no total-count/has-more field.
+  const [historyTruncated, setHistoryTruncated] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(0);
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+
+  async function loadMessages(chatId: string) {
+    const { messages, limit, truncated } = await api.getMessages(chatId);
+    setMessages(messages);
+    setHistoryLimit(limit);
+    setHistoryTruncated(truncated);
+  }
 
   useEffect(() => {
     api.listChats().then(setChats).catch(console.error);
@@ -28,7 +47,7 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedId) return;
-    api.getMessages(selectedId).then(setMessages).catch(console.error);
+    loadMessages(selectedId).catch(console.error);
     setChats((prev) =>
       prev.map((c) => (c.id === selectedId ? { ...c, unreadCount: 0 } : c)),
     );
@@ -49,7 +68,7 @@ export default function App() {
     try {
       await api.sendMessage(selectedId, text);
       setDraft("");
-      setMessages(await api.getMessages(selectedId));
+      await loadMessages(selectedId);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
     }
@@ -59,7 +78,7 @@ export default function App() {
     if (!selectedId) return;
     try {
       await api.sendImage(selectedId, file);
-      setMessages(await api.getMessages(selectedId));
+      await loadMessages(selectedId);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
     }
@@ -69,7 +88,7 @@ export default function App() {
     if (!selectedId) return;
     try {
       await api.sendVideo(selectedId, file);
-      setMessages(await api.getMessages(selectedId));
+      await loadMessages(selectedId);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
     }
@@ -79,7 +98,32 @@ export default function App() {
     if (!selectedId) return;
     try {
       await api.sendFile(selectedId, file);
-      setMessages(await api.getMessages(selectedId));
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleSendLocation(latitude: number, longitude: number, name?: string) {
+    if (!selectedId) return;
+    try {
+      await api.sendLocation(selectedId, latitude, longitude, name);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleShareContact(contact: Contact) {
+    if (!selectedId) return;
+    try {
+      await api.sendContact(
+        selectedId,
+        contact.id,
+        contact.name || contact.pushname,
+        contact.number,
+      );
+      await loadMessages(selectedId);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
     }
@@ -228,6 +272,25 @@ export default function App() {
     setSelectedId(newChat.id);
   }
 
+  /** Backs the contacts-picker "New chat" flow: the contact is already a known WhatsApp id, so
+   *  unlike `handleStartNewChat` there's no `checkNumberExists` round trip needed. */
+  function handleStartNewChatFromContact(contact: Contact) {
+    const existing = chats.find((c) => c.id === contact.id);
+    if (existing) {
+      setSelectedId(existing.id);
+      return;
+    }
+    const name = contact.name || contact.pushname || contact.number || contact.id;
+    const newChat: Chat = {
+      id: contact.id,
+      name,
+      avatarInitials: name.slice(0, 1).toUpperCase() || "#",
+      avatarColor: "#64748b",
+    };
+    setChats((cs) => [newChat, ...cs]);
+    setSelectedId(newChat.id);
+  }
+
   async function handleToggleUnread(chatId: string) {
     const chat = chats.find((c) => c.id === chatId);
     if (!chat) return;
@@ -262,6 +325,7 @@ export default function App() {
             onSelect={setSelectedId}
             onToggleUnread={handleToggleUnread}
             onStartNewChat={handleStartNewChat}
+            onStartNewChatFromContact={handleStartNewChatFromContact}
           />
         </aside>
         <main className="main">
@@ -275,6 +339,8 @@ export default function App() {
               />
               <ChatThread
                 messages={messages}
+                historyTruncated={historyTruncated}
+                historyLimit={historyLimit}
                 onReact={handleReact}
                 onToggleStar={handleToggleStar}
                 onTogglePin={handleTogglePin}
@@ -293,6 +359,8 @@ export default function App() {
                 onSendImage={handleSendImage}
                 onSendVideo={handleSendVideo}
                 onSendFile={handleSendFile}
+                onSendLocation={handleSendLocation}
+                onShareContact={handleShareContact}
               />
             </>
           ) : (

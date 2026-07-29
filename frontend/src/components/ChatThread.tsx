@@ -9,6 +9,8 @@ function senderKey(m: Message): string {
 
 export function ChatThread({
   messages,
+  historyTruncated,
+  historyLimit,
   onReact,
   onToggleStar,
   onTogglePin,
@@ -16,6 +18,8 @@ export function ChatThread({
   onDeleteMessage,
 }: {
   messages: Message[];
+  historyTruncated?: boolean;
+  historyLimit?: number;
   onReact: (messageId: string, emoji: string) => void;
   onToggleStar: (messageId: string, starred: boolean) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
@@ -30,6 +34,13 @@ export function ChatThread({
 
   return (
     <div className="chat-thread">
+      {Boolean(historyLimit) && messages.length > 0 && (
+        <div className="history-notice">
+          {historyTruncated
+            ? `Showing the most recent ${messages.length} messages loaded from this session — older history exists but wasn't fetched here.`
+            : `${messages.length} message${messages.length === 1 ? "" : "s"} loaded from this session — may not match the full history on your phone.`}
+        </div>
+      )}
       {messages.map((m, i) => {
         const prev = messages[i - 1];
         const newDay = !prev || !isSameCalendarDay(prev.timestamp, m.timestamp);

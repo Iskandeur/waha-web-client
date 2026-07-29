@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
 import { api, type Label } from "../api.js";
-import { CheckIcon, PlusIcon, TrashIcon } from "./icons.js";
+import { CheckIcon, PencilIcon, PlusIcon, TrashIcon } from "./icons.js";
+
+/** A small curated swatch set (WhatsApp Business ships ~20 label colors; this is a practical
+ *  subset) — `color` is the number WAHA stores, `colorHex` is what the UI renders. */
+const LABEL_PALETTE: { color: number; colorHex: string }[] = [
+  { color: 0, colorHex: "#ff9485" },
+  { color: 1, colorHex: "#54c9c2" },
+  { color: 2, colorHex: "#89c9ff" },
+  { color: 3, colorHex: "#e2b4ff" },
+  { color: 4, colorHex: "#fdd663" },
+  { color: 5, colorHex: "#8bcf8f" },
+  { color: 6, colorHex: "#f39bd0" },
+  { color: 7, colorHex: "#8696a0" },
+];
 
 /** Popover for viewing/creating/assigning labels on the open chat — self-contained (fetches
  *  its own data) rather than threading label state through App.tsx, since no other screen
@@ -10,6 +23,8 @@ export function LabelsMenu({ chatId, onClose }: { chatId: string; onClose: () =>
   const [chatLabelIds, setChatLabelIds] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     api.listLabels().then(setAllLabels).catch(() => setError("Couldn't load labels"));
@@ -54,6 +69,22 @@ export function LabelsMenu({ chatId, onClose }: { chatId: string; onClose: () =>
     }
   }
 
+  function startEdit(label: Label) {
+    setEditingId(label.id);
+    setEditName(label.name);
+  }
+
+  async function saveEdit(label: Label, color?: number, colorHex?: string) {
+    const name = editName.trim() || label.name;
+    try {
+      const updated = await api.updateLabel(label.id, name, color ?? label.color, colorHex ?? label.colorHex);
+      setAllLabels((ls) => ls.map((l) => (l.id === label.id ? updated : l)));
+      if (color === undefined) setEditingId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <div className="labels-menu" onClick={(e) => e.stopPropagation()}>
       <div className="labels-menu-title">Labels</div>
@@ -61,19 +92,68 @@ export function LabelsMenu({ chatId, onClose }: { chatId: string; onClose: () =>
       <ul className="labels-menu-list">
         {allLabels.map((label) => (
           <li key={label.id} className="labels-menu-item">
-            <button type="button" className="labels-menu-toggle" onClick={() => toggle(label.id)}>
-              <span className="labels-menu-swatch" style={{ background: label.colorHex }} />
-              <span className="labels-menu-name">{label.name}</span>
-              {chatLabelIds.includes(label.id) && <CheckIcon size={15} />}
-            </button>
-            <button
-              type="button"
-              className="labels-menu-remove"
-              aria-label={`Delete label ${label.name}`}
-              onClick={() => removeLabel(label.id)}
-            >
-              <TrashIcon size={14} />
-            </button>
+            {editingId === label.id ? (
+              <form
+                className="labels-menu-edit"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveEdit(label);
+                }}
+              >
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  maxLength={40}
+                />
+                <div className="labels-menu-palette">
+                  {LABEL_PALETTE.map((swatch) => (
+                    <button
+                      key={swatch.color}
+                      type="button"
+                      className="labels-menu-swatch-btn"
+                      aria-label={`Set color ${swatch.color}`}
+                      style={{ background: swatch.colorHex }}
+                      onClick={() => saveEdit(label, swatch.color, swatch.colorHex)}
+                    />
+                  ))}
+                </div>
+                <div className="labels-menu-edit-actions">
+                  <button type="submit">Save</button>
+                  <button type="button" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="labels-menu-toggle"
+                  onClick={() => toggle(label.id)}
+                >
+                  <span className="labels-menu-swatch" style={{ background: label.colorHex }} />
+                  <span className="labels-menu-name">{label.name}</span>
+                  {chatLabelIds.includes(label.id) && <CheckIcon size={15} />}
+                </button>
+                <button
+                  type="button"
+                  className="labels-menu-edit-btn"
+                  aria-label={`Rename or recolor ${label.name}`}
+                  onClick={() => startEdit(label)}
+                >
+                  <PencilIcon size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="labels-menu-remove"
+                  aria-label={`Delete label ${label.name}`}
+                  onClick={() => removeLabel(label.id)}
+                >
+                  <TrashIcon size={14} />
+                </button>
+              </>
+            )}
           </li>
         ))}
         {allLabels.length === 0 && <li className="labels-menu-empty">No labels yet</li>}

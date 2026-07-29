@@ -198,6 +198,34 @@ export function TagIcon(props: IconProps) {
   );
 }
 
+export function MapPinIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 2c-2.8 0-5 2.2-5 5 0 3.5 5 10 5 10s5-6.5 5-10c0-2.8-2.2-5-5-5Z" />
+      <circle cx="12" cy="7" r="2" />
+    </Svg>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+    </Svg>
+  );
+}
+
+export function InfoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6" />
+      <circle cx="12" cy="8" r="0.6" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <Svg {...props}>

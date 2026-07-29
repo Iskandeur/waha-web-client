@@ -3,7 +3,7 @@ import type { Message } from "../api.js";
 import { formatClockTime } from "../format.js";
 import { StatusTicks } from "./StatusTicks.js";
 import { MessageActions } from "./MessageActions.js";
-import { FileIcon, ImageIcon, PinIcon, PlayIcon, StarIcon } from "./icons.js";
+import { FileIcon, ImageIcon, MapPinIcon, PinIcon, PlayIcon, StarIcon, UserIcon } from "./icons.js";
 
 function MessageContent({ m }: { m: Message }) {
   switch (m.type) {
@@ -36,6 +36,32 @@ function MessageContent({ m }: { m: Message }) {
         <div className="message-media message-media-file">
           <FileIcon size={20} />
           <span>{m.mediaName ?? "File"}</span>
+        </div>
+      );
+    case "location":
+      return (
+        <a
+          className="message-media message-media-location"
+          href={
+            m.latitude !== undefined && m.longitude !== undefined
+              ? `https://www.openstreetmap.org/?mlat=${m.latitude}&mlon=${m.longitude}#map=16/${m.latitude}/${m.longitude}`
+              : undefined
+          }
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MapPinIcon size={20} />
+          <span>{m.locationName || "Shared location"}</span>
+        </a>
+      );
+    case "contact":
+      return (
+        <div className="message-media message-media-contact">
+          <UserIcon size={20} />
+          <div>
+            <div className="message-contact-name">{m.contactName || "Contact"}</div>
+            {m.contactNumber && <div className="message-contact-number">{m.contactNumber}</div>}
+          </div>
         </div>
       );
     case "voice":

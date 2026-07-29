@@ -61,6 +61,15 @@ export interface WahaLabel {
   colorHex: string;
 }
 
+/** Matches WAHA's `Contact` schema for `sendContactVcard` — `vcard: null` lets WAHA generate
+ *  the vcard string itself from `fullName`/`phoneNumber` rather than us building one by hand. */
+export interface WahaContactCard {
+  fullName: string;
+  phoneNumber: string;
+  whatsappId?: string;
+  vcard: string | null;
+}
+
 export class WahaError extends Error {
   constructor(
     public status: number,
@@ -368,6 +377,37 @@ export const waha = {
       wahaFetch<WahaMessage>(
         "/api/sendVideo",
         { method: "POST", body: JSON.stringify({ session, chatId, file, caption }) },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
+  /** Same guard path as `sendImage` — a location pin is exactly as visible to WhatsApp's abuse
+   *  detection as any other message. `title` is required by WAHA's own schema. */
+  sendLocation: (
+    chatId: string,
+    latitude: number,
+    longitude: number,
+    title: string,
+    session = config.wahaSession,
+  ) =>
+    sendGuarded(chatId, title, session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendLocation",
+        { method: "POST", body: JSON.stringify({ session, chatId, latitude, longitude, title }) },
+        { kind: "send", session, chatId },
+      ),
+    ),
+
+  /** Shares one or more contact cards. Same guard path as other sends. */
+  sendContactVcard: (
+    chatId: string,
+    contacts: WahaContactCard[],
+    session = config.wahaSession,
+  ) =>
+    sendGuarded(chatId, contacts.map((c) => c.fullName).join(", "), session, () =>
+      wahaFetch<WahaMessage>(
+        "/api/sendContactVcard",
+        { method: "POST", body: JSON.stringify({ session, chatId, contacts }) },
         { kind: "send", session, chatId },
       ),
     ),
