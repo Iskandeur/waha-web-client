@@ -293,9 +293,12 @@ export const waha = {
       { kind: "read", session },
     ),
 
-  getMessages: (chatId: string, session = config.wahaSession, limit = 100) =>
+  /** `offset` backs "load older messages": WAHA's own `GET .../messages` query accepts
+   *  `limit`/`offset` (no cursor/token — a plain page-through-the-store pair), so passing a
+   *  growing offset walks further back into history a page at a time. */
+  getMessages: (chatId: string, session = config.wahaSession, limit = 100, offset = 0) =>
     wahaFetch<WahaMessage[]>(
-      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`,
+      `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}&offset=${offset}`,
       {},
       { kind: "read", session, chatId },
     ),
@@ -323,6 +326,17 @@ export const waha = {
   checkNumberExists: (phone: string, session = config.wahaSession) =>
     wahaFetch<WahaNumberStatus>(
       `/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(session)}`,
+      {},
+      { kind: "read", session },
+    ),
+
+  /** Single-contact lookup — same `?session=` query-param scoping as `listContacts`/
+   *  `checkNumberExists`/`getContactAbout` above. Backs the new contact-detail panel (the
+   *  missing UI slot this endpoint had no caller for since it was flagged "todo" in the v9
+   *  coverage pass). */
+  getContact: (contactId: string, session = config.wahaSession) =>
+    wahaFetch<WahaContact>(
+      `/api/contacts?contactId=${encodeURIComponent(contactId)}&session=${encodeURIComponent(session)}`,
       {},
       { kind: "read", session },
     ),

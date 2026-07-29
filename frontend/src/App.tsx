@@ -31,6 +31,7 @@ export default function App() {
   // its cap (see routes/chats.ts) — WAHA's own API returns no total-count/has-more field.
   const [historyTruncated, setHistoryTruncated] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -39,6 +40,26 @@ export default function App() {
     setMessages(messages);
     setHistoryLimit(limit);
     setHistoryTruncated(truncated);
+  }
+
+  /** "Load older messages": pages backwards using the count already in state as the offset, and
+   *  prepends whatever comes back. De-duped by id since a page landing exactly on a message we
+   *  already have (chat activity shifted the window between fetches) is possible; a page that
+   *  adds nothing new is treated as "no more history" so the button can't spin forever. */
+  async function handleLoadOlder() {
+    if (!selectedId || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const { messages: older, truncated } = await api.getMessages(selectedId, messages.length);
+      const existingIds = new Set(messages.map((m) => m.id));
+      const fresh = older.filter((m) => !existingIds.has(m.id));
+      setMessages((ms) => [...fresh, ...ms]);
+      setHistoryTruncated(fresh.length > 0 && truncated);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingOlder(false);
+    }
   }
 
   useEffect(() => {
@@ -426,6 +447,8 @@ export default function App() {
                 messages={messages}
                 historyTruncated={historyTruncated}
                 historyLimit={historyLimit}
+                onLoadOlder={handleLoadOlder}
+                loadingOlder={loadingOlder}
                 onReact={handleReact}
                 onToggleStar={handleToggleStar}
                 onTogglePin={handleTogglePin}

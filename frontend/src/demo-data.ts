@@ -151,6 +151,14 @@ export const DEMO_CONTACTS: Contact[] = [
   { id: "15551230005@c.us", name: "Priya's studio", number: "+1 555 123 0005" },
 ];
 
+/** A couple of canned "about" texts (WhatsApp's status line) so the demo's contact-detail panel
+ *  has something real to show — most contacts have none, an honest reflection of most real
+ *  WhatsApp accounts too (see the panel's "No about info shared" fallback). */
+const DEMO_CONTACT_ABOUT: Record<string, string> = {
+  "demo-2": "Busy building things ⚡",
+  "demo-1": "Available",
+};
+
 let nextLabelId = 3;
 export const DEMO_LABELS: Label[] = [
   { id: "1", name: "Friends", color: 0, colorHex: "#ff9485" },
@@ -231,9 +239,16 @@ export const demoApi = {
     delay([...DEMO_CHATS].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))),
 
   // All canned threads are well under any real fetch cap, so `truncated` is always false — an
-  // honest reflection of demo data, not a hardcoded claim about real WAHA history.
-  getMessages: (chatId: string): Promise<MessagesResult> =>
-    delay({ messages: DEMO_MESSAGES[chatId] ?? [], limit: 100, truncated: false }),
+  // honest reflection of demo data, not a hardcoded claim about real WAHA history. `offset`
+  // walks backwards from the end of the canned array (mirrors the real "load older" page
+  // shape) — once it runs past the start there's nothing left to load, same as a real chat
+  // that's fully paged through.
+  getMessages: (chatId: string, offset = 0): Promise<MessagesResult> => {
+    const all = DEMO_MESSAGES[chatId] ?? [];
+    const end = Math.max(all.length - offset, 0);
+    const start = Math.max(end - 100, 0);
+    return delay({ messages: all.slice(start, end), limit: 100, offset, truncated: false });
+  },
 
   sendMessage: (chatId: string, text: string) => {
     const message: Message = {
@@ -546,6 +561,13 @@ export const demoApi = {
 
   listContacts: () => delay([...DEMO_CONTACTS]),
 
+  getContact: (contactId: string) => {
+    const contact = DEMO_CONTACTS.find((c) => c.id === contactId);
+    return delay(contact ? { ...contact, isMyContact: true } : { id: contactId, isMyContact: false });
+  },
+
+  getContactAbout: (contactId: string) => delay({ about: DEMO_CONTACT_ABOUT[contactId] ?? null }),
+
   blockContact: (contactId: string) => {
     const chat = DEMO_CHATS.find((c) => c.id === contactId);
     if (chat) chat.isBlocked = true;
@@ -592,6 +614,13 @@ export const demoApi = {
   setChatLabels: (chatId: string, labelIds: string[]) => {
     DEMO_CHAT_LABELS[chatId] = [...labelIds];
     return delay({ ok: true as const });
+  },
+
+  getChatsByLabel: (labelId: string) => {
+    const ids = Object.entries(DEMO_CHAT_LABELS)
+      .filter(([, labelIds]) => labelIds.includes(labelId))
+      .map(([chatId]) => chatId);
+    return delay(ids.map((id) => ({ id })));
   },
 
   // --- Groups ------------------------------------------------------------------------------

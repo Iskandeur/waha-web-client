@@ -1,20 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
-import type { Chat, Contact } from "../api.js";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { api, type Chat, type Contact } from "../api.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
 import { JoinGroupModal } from "./JoinGroupModal.js";
+import { LabelFilter } from "./LabelFilter.js";
 import { NewGroupFlow } from "./NewGroupFlow.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { StatusTicks } from "./StatusTicks.js";
-import {
-  MailIcon,
-  PinIcon,
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-  UsersIcon,
-} from "./icons.js";
+import { MailIcon, PinIcon, PlusIcon, SearchIcon, SettingsIcon, UsersIcon } from "./icons.js";
 
 type Filter = "all" | "unread" | "groups" | "archived";
 
@@ -112,21 +106,35 @@ export function ChatList({
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<NewMenuAction>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [labelFilterId, setLabelFilterId] = useState<string | null>(null);
+  const [labelFilterChatIds, setLabelFilterChatIds] = useState<string[] | null>(null);
 
   const archivedCount = useMemo(() => chats.filter((c) => c.isArchived).length, [chats]);
+
+  useEffect(() => {
+    if (!labelFilterId) {
+      setLabelFilterChatIds(null);
+      return;
+    }
+    api
+      .getChatsByLabel(labelFilterId)
+      .then((ids) => setLabelFilterChatIds(ids.map((c) => c.id)))
+      .catch(() => setLabelFilterChatIds([]));
+  }, [labelFilterId]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return chats
       .filter((c) => (filter === "archived" ? c.isArchived : !c.isArchived))
       .filter((c) => (q ? c.name.toLowerCase().includes(q) : true))
+      .filter((c) => (labelFilterId ? (labelFilterChatIds ?? []).includes(c.id) : true))
       .filter((c) => {
         if (filter === "unread") return (c.unreadCount ?? 0) > 0;
         if (filter === "groups") return Boolean(c.isGroup);
         return true;
       })
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
-  }, [chats, query, filter]);
+  }, [chats, query, filter, labelFilterId, labelFilterChatIds]);
 
   async function submitNewChat(e: FormEvent) {
     e.preventDefault();
@@ -250,6 +258,7 @@ export function ChatList({
             {f === "archived" && archivedCount > 0 ? ` (${archivedCount})` : ""}
           </button>
         ))}
+        <LabelFilter activeLabelId={labelFilterId} onSelect={setLabelFilterId} />
       </div>
       <ul className="chat-list">
         {visible.map((chat) => (

@@ -11,6 +11,15 @@ export function isValidPhone(phone: unknown): phone is string {
 export async function contactsRoutes(app: FastifyInstance) {
   app.get("/api/contacts", async () => waha.listContacts());
 
+  app.get<{ Params: { id: string } }>("/api/contacts/:id", async (req, reply) => {
+    const { id } = req.params;
+    if (!isValidContactId(id)) {
+      reply.code(400);
+      return { error: "contact id is required" };
+    }
+    return waha.getContact(id);
+  });
+
   app.get<{ Querystring: { phone?: string } }>(
     "/api/contacts/check-exists",
     async (req, reply) => {

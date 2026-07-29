@@ -5,6 +5,7 @@ import {
   isValidFile,
   isValidLatitude,
   isValidLongitude,
+  isValidOffset,
   isValidPinDuration,
   isValidPollName,
   isValidPollOptions,
@@ -159,4 +160,19 @@ test("isValidVotes rejects non-array or non-string entries", () => {
   assert.equal(isValidVotes([42]), false);
   assert.equal(isValidVotes(null), false);
   assert.equal(isValidVotes(undefined), false);
+});
+
+test("isValidOffset accepts zero and positive integers", () => {
+  assert.equal(isValidOffset(0), true);
+  assert.equal(isValidOffset(100), true);
+  assert.equal(isValidOffset(1), true);
+});
+
+test("isValidOffset rejects negative, non-integer, or non-number input", () => {
+  assert.equal(isValidOffset(-1), false);
+  assert.equal(isValidOffset(1.5), false);
+  assert.equal(isValidOffset(NaN), false);
+  assert.equal(isValidOffset("100"), false);
+  assert.equal(isValidOffset(null), false);
+  assert.equal(isValidOffset(undefined), false);
 });

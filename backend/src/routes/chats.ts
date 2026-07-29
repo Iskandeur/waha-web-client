@@ -64,20 +64,40 @@ export function isValidVotes(votes: unknown): votes is string[] {
  *  is the only real (non-guessed) signal we have that older history exists but wasn't fetched. */
 export const MESSAGES_FETCH_LIMIT = 100;
 
+/** `offset` must be a non-negative integer (or absent) — anything else 400s instead of
+ *  surfacing as an opaque WAHA error or, worse, silently coercing to `NaN`/0. */
+export function isValidOffset(offset: unknown): offset is number {
+  return typeof offset === "number" && Number.isInteger(offset) && offset >= 0;
+}
+
 export async function chatsRoutes(app: FastifyInstance) {
   app.get("/api/chats", async () => waha.chatsOverview());
 
-  app.get<{ Params: { chatId: string } }>(
+  app.get<{ Params: { chatId: string }; Querystring: { offset?: string } }>(
     "/api/chats/:chatId/messages",
-    async (req) => {
-      const messages = await waha.getMessages(req.params.chatId, undefined, MESSAGES_FETCH_LIMIT);
+    async (req, reply) => {
+      const rawOffset = req.query.offset;
+      const offset = rawOffset === undefined ? 0 : Number(rawOffset);
+      if (!isValidOffset(offset)) {
+        reply.code(400);
+        return { error: "offset must be a non-negative integer" };
+      }
+      const messages = await waha.getMessages(
+        req.params.chatId,
+        undefined,
+        MESSAGES_FETCH_LIMIT,
+        offset,
+      );
       return {
         messages,
         limit: MESSAGES_FETCH_LIMIT,
-        // True = we hit the requested cap, so older messages likely exist but weren't loaded.
-        // False only means "WAHA returned fewer than we asked for this session" — it is NOT a
-        // guarantee this matches the complete history on the phone (WhatsApp Web/multi-device
-        // sessions don't always sync full pre-link history; see README "Live demo"/coverage doc).
+        offset,
+        // True = we hit the requested cap, so older messages likely exist but weren't loaded
+        // *at this offset* yet — the frontend re-checks this after every "load older" page too,
+        // so pagination naturally stops once a page comes back short. False only means "WAHA
+        // returned fewer than we asked for this session" — it is NOT a guarantee this matches
+        // the complete history on the phone (WhatsApp Web/multi-device sessions don't always
+        // sync full pre-link history; see README "Live demo"/coverage doc).
         truncated: messages.length >= MESSAGES_FETCH_LIMIT,
       };
     },

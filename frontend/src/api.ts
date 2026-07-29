@@ -115,6 +115,7 @@ export interface SendError {
 export interface MessagesResult {
   messages: Message[];
   limit: number;
+  offset: number;
   truncated: boolean;
 }
 
@@ -123,6 +124,11 @@ export interface Contact {
   name?: string;
   pushname?: string;
   number?: string;
+  isMyContact?: boolean;
+}
+
+export interface ContactAbout {
+  about: string | null;
 }
 
 export interface Group {
@@ -174,10 +180,12 @@ export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE !== "false";
 const realApi = {
   listChats: () => fetch("/api/chats").then((r) => json<Chat[]>(r)),
 
-  getMessages: (chatId: string) =>
-    fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`).then((r) =>
-      json<MessagesResult>(r),
-    ),
+  /** `offset` walks further back into history a page at a time — "load older messages" passes
+   *  the count already loaded so far. */
+  getMessages: (chatId: string, offset = 0) =>
+    fetch(
+      `/api/chats/${encodeURIComponent(chatId)}/messages${offset ? `?offset=${offset}` : ""}`,
+    ).then((r) => json<MessagesResult>(r)),
 
   sendMessage: (chatId: string, text: string) =>
     fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
@@ -345,6 +353,16 @@ const realApi = {
 
   listContacts: () => fetch("/api/contacts").then((r) => json<Contact[]>(r)),
 
+  /** Backs `ContactDetailPanel` — single-contact lookup (name/number/isMyContact), the missing
+   *  UI slot `GET contacts/{id}` had no caller for since it was wired backend-side. */
+  getContact: (contactId: string) =>
+    fetch(`/api/contacts/${encodeURIComponent(contactId)}`).then((r) => json<Contact>(r)),
+
+  getContactAbout: (contactId: string) =>
+    fetch(`/api/contacts/about?contactId=${encodeURIComponent(contactId)}`).then((r) =>
+      json<ContactAbout>(r),
+    ),
+
   blockContact: (contactId: string) =>
     fetch("/api/contacts/block", {
       method: "POST",
@@ -396,6 +414,13 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ labelIds }),
     }).then((r) => json<{ ok: true }>(r)),
+
+  /** Backs the chat list's "filter by label" view — just the ids, matched against the chats
+   *  already held in state rather than trusting WAHA's own (unenriched) chat shape here. */
+  getChatsByLabel: (labelId: string) =>
+    fetch(`/api/labels/${encodeURIComponent(labelId)}/chats`).then((r) =>
+      json<{ id: string }[]>(r),
+    ),
 
   // --- Groups ------------------------------------------------------------------------------
 
