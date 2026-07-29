@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { waha } from "../waha-client.js";
+import { GuardBlockedError, waha } from "../waha-client.js";
 
 export async function chatsRoutes(app: FastifyInstance) {
   app.get("/api/chats", async () => waha.chatsOverview());
@@ -17,7 +17,15 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "text is required" };
       }
-      return waha.sendText(req.params.chatId, text);
+      try {
+        return await waha.sendText(req.params.chatId, text);
+      } catch (err) {
+        if (err instanceof GuardBlockedError) {
+          reply.code(429);
+          return { error: "blocked-by-guard", reason: err.reason };
+        }
+        throw err;
+      }
     },
   );
 }
