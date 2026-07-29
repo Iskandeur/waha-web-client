@@ -3,12 +3,21 @@ import { api, type Chat } from "../api.js";
 import { formatPresence } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { GroupPanel } from "./GroupPanel.js";
-import { ArchiveIcon, MoreVerticalIcon, SearchIcon, TagIcon, TrashIcon, UsersIcon } from "./icons.js";
+import {
+  ArchiveIcon,
+  MoreVerticalIcon,
+  SearchIcon,
+  ShieldIcon,
+  TagIcon,
+  TrashIcon,
+  UsersIcon,
+} from "./icons.js";
 import { LabelsMenu } from "./LabelsMenu.js";
 
 export function ChatHeader({
   chat,
   onToggleArchive,
+  onToggleBlock,
   onClearMessages,
   onDeleteChat,
   onGroupSubjectChange,
@@ -16,6 +25,7 @@ export function ChatHeader({
 }: {
   chat: Chat;
   onToggleArchive: () => void;
+  onToggleBlock: () => void;
   onClearMessages: () => void;
   onDeleteChat: () => void;
   onGroupSubjectChange: (chatId: string, subject: string) => void;
@@ -107,6 +117,18 @@ export function ChatHeader({
                 <ArchiveIcon size={16} />
                 {chat.isArchived ? "Unarchive chat" : "Archive chat"}
               </button>
+              {!chat.isGroup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleBlock();
+                  }}
+                >
+                  <ShieldIcon size={16} />
+                  {chat.isBlocked ? "Unblock contact" : "Block contact"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
