@@ -9,6 +9,7 @@ import {
   typingDurationMs,
   type GuardActionKind,
 } from "./guard/index.js";
+import { checkRealConnection } from "./real-connection-guard.js";
 
 export interface WahaChat {
   id: string;
@@ -153,6 +154,19 @@ interface WahaCallMeta {
  *  detection — but even that richer path ends up calling this same function to hit the wire. */
 async function wahaFetch<T>(path: string, init: RequestInit, meta: WahaCallMeta): Promise<T> {
   const now = Date.now();
+
+  const realConnectionDecision = checkRealConnection(meta.session, meta.kind);
+  if (!realConnectionDecision.allow) {
+    auditLog.push({
+      ts: now,
+      kind: meta.kind,
+      session: meta.session,
+      chatId: meta.chatId,
+      decision: "blocked",
+      reason: realConnectionDecision.reason,
+    });
+    throw new GuardBlockedError(realConnectionDecision.reason);
+  }
 
   if (circuitBreaker.isOpen(now)) {
     auditLog.push({

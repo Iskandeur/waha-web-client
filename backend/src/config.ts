@@ -13,4 +13,12 @@ export const config = {
   // invalid, which is fine for a stateless demo gate.
   accessSessionSecret:
     process.env.ACCESS_SESSION_SECRET ?? randomBytes(32).toString("hex"),
+  // Real-connection guard (see docs/real-connection-plan.md) — gates pointing this backend at
+  // a real, valued WAHA session instead of a disposable/test one. All three default OFF: unset
+  // env vars reproduce the exact behavior this codebase had before these flags existed.
+  realConnection: {
+    enabled: process.env.WAHA_REAL_CONNECTION === "true",
+    allowedSession: process.env.WAHA_REAL_CONNECTION_SESSION ?? "",
+    writeEnabled: process.env.WAHA_REAL_CONNECTION_WRITE === "true",
+  },
 };
