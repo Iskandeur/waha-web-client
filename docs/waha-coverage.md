@@ -68,7 +68,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
 | `GET chats/overview` (+`POST` batch variant) | Chat list (name, avatar, last message) | **done** (GET) / todo (POST batch) | `routes/chats.ts`; the `POST` batch form only matters at very large `ids` lists, low priority. |
-| `GET chats` | Raw chat list (session-scoped, no overview enrichment) | dead code | `waha.listChats()` exists in `waha-client.ts` but no route/UI calls it — either wire it to something or remove; flagged for a follow-up cleanup, not a feature gap. |
+| `GET chats` | Raw chat list (session-scoped, no overview enrichment) | **removed (this job)** | `waha.listChats()` was dead code (no route/UI ever called it, fully superseded by `chatsOverview`) — deleted rather than wired up, per the previous job's flag. |
 | `GET chats/{chatId}/messages` | Load message history | **done** | `routes/chats.ts` |
 | `GET chats/{chatId}/picture` | Chat/contact avatar image | **done** | New `waha.getChatPicture`. |
 | `DELETE chats/{chatId}` | Delete a whole conversation | **done (this job)** | New `waha.deleteChat`; confirm dialog client-side (`window.confirm`); see below. |
@@ -102,7 +102,8 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET/POST labels`, `PUT/DELETE labels/{id}`, `GET/PUT labels/chats/{chatId}`, `GET labels/{id}/chats` | Organize chats with labels (WhatsApp Business feature) | todo | Valuable for power users, secondary to core messaging richness. |
+| `GET/POST labels`, `PUT/DELETE labels/{id}`, `GET/PUT labels/chats/{chatId}` | Organize chats with labels (WhatsApp Business feature) | **done (this job)** | New `waha.listLabels`/`createLabel`/`updateLabel`/`deleteLabel`/`getChatLabels`/`setChatLabels`; see below. |
+| `GET labels/{id}/chats` | List every chat carrying a given label | **done (this job)** | New `waha.getChatsByLabel` (backend/route ready; no dedicated "filter chat list by label" UI yet — see What's next). |
 
 ## Contacts
 
@@ -252,12 +253,43 @@ validators while touching this code — `isValidText` (send/edit routes) and `is
 (contacts route) — with their own unit tests, matching the existing `isValidFile`/
 `isValidPinDuration` pattern. 9 new backend tests (31 total, was 22).
 
+## Added this job (v6 pass)
+
+Also moved this pass: **VPS deployment + PIN gate** (single Dockerfile, `deploy/docker-compose.yml`,
+`backend/src/access-gate.ts`) — see the README's "Self-hosted deployment" section, not a WAHA
+endpoint so it isn't in the table above.
+
+On the feature-gap list, this pass focused on **labels** (top of the previous job's priority
+order after the contacts-picker UI, which is deferred again below — see why):
+
+1. **Labels** — `waha.listLabels`/`createLabel`/`updateLabel`/`deleteLabel`/`getChatLabels`/
+   `setChatLabels`/`getChatsByLabel`, routed in a new `backend/src/routes/labels.ts`
+   (`GET/POST /api/labels`, `PUT/DELETE /api/labels/:id`, `GET /api/labels/:id/chats`,
+   `GET/PUT /api/chats/:chatId/labels`). New `LabelsMenu` component (a popover off `ChatHeader`'s
+   menu, new "Labels" entry): lists every label with a checkbox to toggle it on the open chat,
+   an inline "+ new label" quick-add (name only — `updateLabel`/custom colors have no UI yet,
+   see below), and a per-label delete. Mirrored in `demoApi` (`DEMO_LABELS` + a
+   chat→label-ids map) so the public demo works with zero real WAHA calls.
+2. **Dead code removed** — `waha.listChats()` (the raw, non-overview chat list) had no route/UI
+   calling it, flagged as a cleanup in the previous job's report; deleted rather than wired up
+   (`chatsOverview` already covers the chat-list product surface).
+
+Implemented behind `wahaFetch` per the established pattern; two new validators
+(`isValidLabelName`, `isValidLabelIds`) with their own unit tests. 40 backend tests total (was 31).
+
+**Contacts-picker UI deferred again**: with labels done, this is now the single highest-value
+remaining gap (the backend/route — `waha.listContacts`/`GET /api/contacts` — has been ready
+since v5). Skipped this pass for the same reason as v5: this job's time went to the VPS+PIN
+deployment first (see README), leaving less room for a second UI-heavy feature; better to ship
+labels solidly than two features half-done.
+
 ## What's next (highest-value gaps, not done this job)
 
-In rough priority order for a future pass: a contacts-picker UI on top of the now-implemented
-`waha.listContacts`; `sendVoice` (needs an in-browser recorder) and
-`sendLocation`/`sendContactVcard` (need picker UI); labels; group *management* UI (group
-messaging already works — it's just another `chatId`); a Settings screen for profile
-(name/about/avatar). Also flagged, not a feature gap: `waha.listChats()` (the *other* one —
-the raw non-overview chat list) is still dead code (no route/UI calls it) — wire it up or
-remove it.
+In rough priority order for a future pass: a **contacts-picker UI** on top of the
+still-unused `waha.listContacts`/`GET /api/contacts` (highest priority — deferred three passes
+running now); `sendVoice` (needs an in-browser recorder) and `sendLocation`/`sendContactVcard`
+(need picker UI); a "filter chat list by label" view on top of the now-implemented
+`getChatsByLabel`; label **rename**/recolor UI (`updateLabel` is implemented backend-side, no
+UI calls it yet — create/assign/delete are covered, rename/recolor aren't); group *management*
+UI (group messaging already works — it's just another `chatId`); a Settings screen for profile
+(name/about/avatar).
