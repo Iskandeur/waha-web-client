@@ -1,4 +1,12 @@
-import type { Chat, ChatPresence, Message, MessageStatus, MessageType, OutgoingFile } from "./api.js";
+import type {
+  Chat,
+  ChatPresence,
+  Message,
+  MessageStatus,
+  MessageType,
+  NumberStatus,
+  OutgoingFile,
+} from "./api.js";
 import { messagePreview } from "./format.js";
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -297,6 +305,57 @@ export const demoApi = {
 
   // The public demo never has a real profile picture — always fall back to the initials avatar.
   getChatPicture: (_chatId: string) => delay({ url: null }),
+
+  archiveChat: (chatId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) chat.isArchived = true;
+    return delay({ ok: true as const });
+  },
+
+  unarchiveChat: (chatId: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) chat.isArchived = false;
+    return delay({ ok: true as const });
+  },
+
+  deleteChat: (chatId: string) => {
+    const idx = DEMO_CHATS.findIndex((c) => c.id === chatId);
+    if (idx !== -1) DEMO_CHATS.splice(idx, 1);
+    delete DEMO_MESSAGES[chatId];
+    return delay({ ok: true as const });
+  },
+
+  clearChatMessages: (chatId: string) => {
+    DEMO_MESSAGES[chatId] = [];
+    const chat = DEMO_CHATS.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessagePreview = undefined;
+      chat.lastMessageAt = undefined;
+      chat.lastMessageFromMe = undefined;
+      chat.lastMessageStatus = undefined;
+    }
+    return delay({ ok: true as const });
+  },
+
+  deleteMessage: (chatId: string, messageId: string) => {
+    const msgs = DEMO_MESSAGES[chatId];
+    if (msgs) DEMO_MESSAGES[chatId] = msgs.filter((m) => m.id !== messageId);
+    return delay({ ok: true as const });
+  },
+
+  editMessage: (chatId: string, messageId: string, text: string) => {
+    const message = (DEMO_MESSAGES[chatId] ?? []).find((m) => m.id === messageId);
+    if (message) message.body = text;
+    return delay({ ok: true as const });
+  },
+
+  // No real WAHA behind the demo — treat any string with at least 8 digits as "on WhatsApp",
+  // same shape (`numberExists` + `chatId`) the real endpoint returns.
+  checkNumberExists: (phone: string): Promise<NumberStatus> => {
+    const digits = phone.replace(/\D/g, "");
+    const exists = digits.length >= 8;
+    return delay({ numberExists: exists, chatId: exists ? `${digits}@c.us` : null });
+  },
 
   runAiCommand: (_chatId: string, instruction: string) =>
     delay({ suggestion: demoAiCommand(instruction) }, 500),

@@ -129,6 +129,32 @@ input {
   font-size: 0.9em;
 }
 
+.new-chat-form {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-chat-btn {
+  background: #00a884;
+  color: #0b141a;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85em;
+}
+
+.new-chat-btn:disabled {
+  opacity: 0.6;
+}
+
+.new-chat-error {
+  color: #f15c6d;
+  font-size: 0.85em;
+}
+
 .chat-list-item {
   display: flex;
   align-items: center;
@@ -296,6 +322,48 @@ input {
   flex: none;
 }
 
+.chat-header-menu-wrap {
+  position: relative;
+  display: flex;
+}
+
+.chat-header-menu-btn {
+  color: inherit;
+  display: flex;
+}
+
+.chat-header-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #233138;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.chat-header-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  color: #d1d7db;
+  font-size: 0.88em;
+  text-align: left;
+}
+
+.chat-header-menu button:hover {
+  background: #2a3942;
+}
+
+.chat-header-menu-danger {
+  color: #f15c6d !important;
+}
+
 /* ---- Thread ---- */
 
 .chat-thread {
@@ -420,6 +488,34 @@ input {
 .message-caption {
   font-size: 0.85em;
   margin-top: 6px;
+}
+
+.message-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.message-edit-form input {
+  background: #0b141a55;
+  border: 1px solid #2a3942;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: inherit;
+  font-size: 0.94em;
+}
+
+.message-edit-form div {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.message-edit-form button {
+  font-size: 0.78em;
+  color: #00a884;
+  padding: 2px 4px;
 }
 
 /* ---- Reactions / star ---- */

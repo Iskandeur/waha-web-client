@@ -1,22 +1,27 @@
 import { useState } from "react";
 import type { Message } from "../api.js";
-import { PinIcon, SmileIcon, StarIcon } from "./icons.js";
+import { PencilIcon, PinIcon, SmileIcon, StarIcon, TrashIcon } from "./icons.js";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
-/** Hover toolbar on a message bubble: quick-react emoji picker + star/pin toggles. Shown on
- *  hover via CSS (`.message:hover .message-actions`), not on every message, to keep the
- *  thread calm. */
+/** Hover toolbar on a message bubble: quick-react emoji picker + star/pin toggles, plus
+ *  edit/delete for your own messages (WhatsApp restricts both to messages you sent, and edit
+ *  further to plain text). Shown on hover via CSS (`.message:hover .message-actions`), not on
+ *  every message, to keep the thread calm. */
 export function MessageActions({
   message,
   onReact,
   onToggleStar,
   onTogglePin,
+  onEdit,
+  onDelete,
 }: {
   message: Message;
   onReact: (emoji: string) => void;
   onToggleStar: () => void;
   onTogglePin: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -66,6 +71,28 @@ export function MessageActions({
       >
         <PinIcon size={16} />
       </button>
+      {onEdit && (
+        <button
+          type="button"
+          className="message-action-btn"
+          aria-label="Edit"
+          title="Edit"
+          onClick={onEdit}
+        >
+          <PencilIcon size={15} />
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          className="message-action-btn"
+          aria-label="Delete"
+          title="Delete"
+          onClick={onDelete}
+        >
+          <TrashIcon size={15} />
+        </button>
+      )}
     </div>
   );
 }

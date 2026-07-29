@@ -12,12 +12,18 @@ export interface Chat {
   participantsCount?: number;
   presence?: string;
   pinned?: boolean;
+  isArchived?: boolean;
   unreadCount?: number;
   lastMessagePreview?: string;
   lastMessageAt?: number;
   lastMessageFromMe?: boolean;
   lastMessageStatus?: MessageStatus;
   [key: string]: unknown;
+}
+
+export interface NumberStatus {
+  numberExists: boolean;
+  chatId: string | null;
 }
 
 export interface Message {
@@ -182,6 +188,43 @@ const realApi = {
       `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/unpin`,
       { method: "POST" },
     ).then((r) => json<{ ok: true }>(r)),
+
+  archiveChat: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/archive`, { method: "POST" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  unarchiveChat: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/unarchive`, { method: "POST" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  deleteChat: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}`, { method: "DELETE" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  clearChatMessages: (chatId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, { method: "DELETE" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  deleteMessage: (chatId: string, messageId: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`, {
+      method: "DELETE",
+    }).then((r) => json<{ ok: true }>(r)),
+
+  editMessage: (chatId: string, messageId: string, text: string) =>
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  checkNumberExists: (phone: string) =>
+    fetch(`/api/contacts/check-exists?phone=${encodeURIComponent(phone)}`).then((r) =>
+      json<NumberStatus>(r),
+    ),
 
   runAiCommand: (chatId: string, instruction: string) =>
     fetch("/api/ai/command", {
