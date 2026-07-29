@@ -1,6 +1,6 @@
 import { guardConfig } from "./config.js";
 
-export type GuardActionKind = "read" | "send" | "presence";
+export type GuardActionKind = "read" | "send" | "presence" | "group";
 export type GuardDecisionKind = "allowed" | "delayed" | "blocked";
 
 export interface GuardLogEntry {

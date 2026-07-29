@@ -272,6 +272,39 @@ export default function App() {
     setSelectedId(newChat.id);
   }
 
+  /** Backs "New group" / "Join group": the group already exists on WAHA's side by the time
+   *  this fires (creation/join already happened) — seed a chat-list entry and select it, same
+   *  shape as `handleStartNewChatFromContact`. */
+  function handleGroupCreatedOrJoined(groupId: string, name?: string) {
+    const existing = chats.find((c) => c.id === groupId);
+    if (existing) {
+      setSelectedId(existing.id);
+      return;
+    }
+    const label = name || groupId;
+    const newChat: Chat = {
+      id: groupId,
+      name: label,
+      avatarInitials: label.slice(0, 2).toUpperCase() || "#",
+      avatarColor: "#8b5cf6",
+      isGroup: true,
+    };
+    setChats((cs) => [newChat, ...cs]);
+    setSelectedId(newChat.id);
+  }
+
+  function handleGroupSubjectChange(chatId: string, subject: string) {
+    setChats((cs) => cs.map((c) => (c.id === chatId ? { ...c, name: subject } : c)));
+  }
+
+  function handleGroupLeftOrDeleted(chatId: string) {
+    setChats((cs) => cs.filter((c) => c.id !== chatId));
+    if (chatId === selectedId) {
+      setSelectedId(null);
+      setMessages([]);
+    }
+  }
+
   /** Backs the contacts-picker "New chat" flow: the contact is already a known WhatsApp id, so
    *  unlike `handleStartNewChat` there's no `checkNumberExists` round trip needed. */
   function handleStartNewChatFromContact(contact: Contact) {
@@ -326,6 +359,7 @@ export default function App() {
             onToggleUnread={handleToggleUnread}
             onStartNewChat={handleStartNewChat}
             onStartNewChatFromContact={handleStartNewChatFromContact}
+            onGroupCreatedOrJoined={handleGroupCreatedOrJoined}
           />
         </aside>
         <main className="main">
@@ -336,6 +370,8 @@ export default function App() {
                 onToggleArchive={() => handleToggleArchive(selectedChat.id)}
                 onClearMessages={() => handleClearMessages(selectedChat.id)}
                 onDeleteChat={() => handleDeleteChat(selectedChat.id)}
+                onGroupSubjectChange={handleGroupSubjectChange}
+                onGroupLeftOrDeleted={handleGroupLeftOrDeleted}
               />
               <ChatThread
                 messages={messages}

@@ -2,6 +2,9 @@ import type {
   Chat,
   ChatPresence,
   Contact,
+  Group,
+  GroupJoinInfo,
+  GroupParticipant,
   Label,
   Message,
   MessagesResult,
@@ -9,6 +12,7 @@ import type {
   MessageType,
   NumberStatus,
   OutgoingFile,
+  Profile,
 } from "./api.js";
 import { messagePreview } from "./format.js";
 
@@ -156,6 +160,48 @@ export const DEMO_LABELS: Label[] = [
 const DEMO_CHAT_LABELS: Record<string, string[]> = {
   "demo-2": ["2"],
 };
+
+/** The demo's own identity — stands in for "me" across group participant lists and the
+ *  Settings screen. Mutable (name/status are editable in the demo, same as the real profile
+ *  routes) but not persisted across a page reload, same as the rest of the demo state. */
+const DEMO_PROFILE: Profile = {
+  id: "15550001000@c.us",
+  picture: null,
+  name: "You",
+};
+
+const DEMO_GROUP_PARTICIPANTS: Record<string, GroupParticipant[]> = {
+  "demo-3": [
+    { id: "15551230001@c.us", pn: "15551230001@c.us", role: "superadmin" }, // Priya
+    { id: "15551230002@c.us", pn: "15551230002@c.us", role: "admin" }, // Marco
+    { id: DEMO_PROFILE.id, pn: DEMO_PROFILE.id, role: "participant" },
+    { id: "15551239001@c.us", pn: "15551239001@c.us", role: "participant" },
+    { id: "15551239002@c.us", pn: "15551239002@c.us", role: "participant" },
+  ],
+  "demo-5": [
+    { id: "15551230003@c.us", pn: "15551230003@c.us", role: "admin" }, // Noor
+    { id: "15551230004@c.us", pn: "15551230004@c.us", role: "participant" }, // Tariq
+    { id: DEMO_PROFILE.id, pn: DEMO_PROFILE.id, role: "participant" },
+    { id: "15551239003@c.us", pn: "15551239003@c.us", role: "participant" },
+    { id: "15551239004@c.us", pn: "15551239004@c.us", role: "participant" },
+    { id: "15551239005@c.us", pn: "15551239005@c.us", role: "participant" },
+    { id: "15551239006@c.us", pn: "15551239006@c.us", role: "participant" },
+    { id: "15551239007@c.us", pn: "15551239007@c.us", role: "participant" },
+  ],
+};
+
+const DEMO_GROUP_DESCRIPTIONS: Record<string, string> = {
+  "demo-3": "Where do we eat this week? 🍜",
+  "demo-5": "One book a month, no spoilers before chapter 3.",
+};
+
+const DEMO_GROUP_SETTINGS: Record<string, { infoAdminOnly: boolean; messagesAdminOnly: boolean }> = {};
+
+const DEMO_GROUP_INVITE_CODES: Record<string, string> = {};
+
+function demoInviteCode(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 const CANNED_SUGGESTIONS: { match: RegExp; suggestion: string }[] = [
   {
@@ -475,4 +521,163 @@ export const demoApi = {
     DEMO_CHAT_LABELS[chatId] = [...labelIds];
     return delay({ ok: true as const });
   },
+
+  // --- Groups ------------------------------------------------------------------------------
+
+  listGroups: (): Promise<Group[]> =>
+    delay(DEMO_CHATS.filter((c) => c.isGroup).map((c) => ({ id: c.id, subject: c.name }))),
+
+  createGroup: (name: string, participantIds: string[]): Promise<Group> => {
+    const id = `demo-group-${Date.now()}`;
+    const chat: Chat = {
+      id,
+      name,
+      avatarInitials: name.trim().slice(0, 2).toUpperCase() || "G",
+      avatarColor: "#8b5cf6",
+      isGroup: true,
+      participantsCount: participantIds.length + 1,
+    };
+    DEMO_CHATS.unshift(chat);
+    DEMO_MESSAGES[id] = [];
+    DEMO_GROUP_PARTICIPANTS[id] = [
+      { id: DEMO_PROFILE.id, pn: DEMO_PROFILE.id, role: "superadmin" },
+      ...participantIds.map((pid) => ({ id: pid, pn: pid, role: "participant" as const })),
+    ];
+    return delay({ id, subject: name });
+  },
+
+  // No real WAHA behind the demo — a fixed preview stands in for whatever group the pasted
+  // code/link would actually resolve to.
+  getGroupJoinInfo: (_code: string): Promise<GroupJoinInfo> =>
+    delay({ id: "demo-preview-group@g.us", subject: "Demo group preview" }),
+
+  joinGroup: (_code: string) => {
+    const id = `demo-joined-${Date.now()}`;
+    const chat: Chat = {
+      id,
+      name: "Joined demo group",
+      avatarInitials: "JG",
+      avatarColor: "#0ea5a4",
+      isGroup: true,
+      participantsCount: 6,
+    };
+    DEMO_CHATS.unshift(chat);
+    DEMO_MESSAGES[id] = [];
+    return delay({ id });
+  },
+
+  getGroup: (groupId: string): Promise<Group> => {
+    const chat = DEMO_CHATS.find((c) => c.id === groupId);
+    return delay({ id: groupId, subject: chat?.name ?? groupId });
+  },
+
+  deleteGroup: (groupId: string) => {
+    const idx = DEMO_CHATS.findIndex((c) => c.id === groupId);
+    if (idx !== -1) DEMO_CHATS.splice(idx, 1);
+    delete DEMO_MESSAGES[groupId];
+    delete DEMO_GROUP_PARTICIPANTS[groupId];
+    return delay({ ok: true as const });
+  },
+
+  leaveGroup: (groupId: string) => {
+    const idx = DEMO_CHATS.findIndex((c) => c.id === groupId);
+    if (idx !== -1) DEMO_CHATS.splice(idx, 1);
+    return delay({ ok: true as const });
+  },
+
+  // The public demo never has a real group photo — always fall back to the initials avatar.
+  getGroupPicture: (_groupId: string) => delay({ url: null }),
+
+  setGroupPicture: (_groupId: string, _file: OutgoingFile) => delay({ success: true as const }),
+
+  deleteGroupPicture: (_groupId: string) => delay({ success: true as const }),
+
+  setGroupSubject: (groupId: string, subject: string) => {
+    const chat = DEMO_CHATS.find((c) => c.id === groupId);
+    if (chat) chat.name = subject;
+    return delay({ ok: true as const });
+  },
+
+  setGroupDescription: (groupId: string, description: string) => {
+    DEMO_GROUP_DESCRIPTIONS[groupId] = description;
+    return delay({ ok: true as const });
+  },
+
+  getGroupInfoAdminOnly: (groupId: string) =>
+    delay({ adminsOnly: DEMO_GROUP_SETTINGS[groupId]?.infoAdminOnly ?? false }),
+
+  setGroupInfoAdminOnly: (groupId: string, adminsOnly: boolean) => {
+    (DEMO_GROUP_SETTINGS[groupId] ??= { infoAdminOnly: false, messagesAdminOnly: false }).infoAdminOnly =
+      adminsOnly;
+    return delay({ ok: true as const });
+  },
+
+  getGroupMessagesAdminOnly: (groupId: string) =>
+    delay({ adminsOnly: DEMO_GROUP_SETTINGS[groupId]?.messagesAdminOnly ?? false }),
+
+  setGroupMessagesAdminOnly: (groupId: string, adminsOnly: boolean) => {
+    (DEMO_GROUP_SETTINGS[groupId] ??= {
+      infoAdminOnly: false,
+      messagesAdminOnly: false,
+    }).messagesAdminOnly = adminsOnly;
+    return delay({ ok: true as const });
+  },
+
+  getGroupInviteCode: (groupId: string) =>
+    delay((DEMO_GROUP_INVITE_CODES[groupId] ??= demoInviteCode())),
+
+  revokeGroupInviteCode: (groupId: string) => {
+    DEMO_GROUP_INVITE_CODES[groupId] = demoInviteCode();
+    return delay(DEMO_GROUP_INVITE_CODES[groupId]);
+  },
+
+  getGroupParticipants: (groupId: string): Promise<GroupParticipant[]> =>
+    delay([...(DEMO_GROUP_PARTICIPANTS[groupId] ?? [])]),
+
+  addGroupParticipants: (groupId: string, participantIds: string[]) => {
+    const list = (DEMO_GROUP_PARTICIPANTS[groupId] ??= []);
+    for (const id of participantIds) {
+      if (!list.some((p) => p.id === id)) list.push({ id, pn: id, role: "participant" });
+    }
+    const chat = DEMO_CHATS.find((c) => c.id === groupId);
+    if (chat) chat.participantsCount = list.length;
+    return delay({ ok: true as const });
+  },
+
+  removeGroupParticipants: (groupId: string, participantIds: string[]) => {
+    const list = DEMO_GROUP_PARTICIPANTS[groupId];
+    if (list) DEMO_GROUP_PARTICIPANTS[groupId] = list.filter((p) => !participantIds.includes(p.id));
+    const chat = DEMO_CHATS.find((c) => c.id === groupId);
+    if (chat) chat.participantsCount = DEMO_GROUP_PARTICIPANTS[groupId]?.length;
+    return delay({ ok: true as const });
+  },
+
+  promoteGroupParticipants: (groupId: string, participantIds: string[]) => {
+    const list = DEMO_GROUP_PARTICIPANTS[groupId] ?? [];
+    for (const p of list) if (participantIds.includes(p.id)) p.role = "admin";
+    return delay({ ok: true as const });
+  },
+
+  demoteGroupParticipants: (groupId: string, participantIds: string[]) => {
+    const list = DEMO_GROUP_PARTICIPANTS[groupId] ?? [];
+    for (const p of list) if (participantIds.includes(p.id)) p.role = "participant";
+    return delay({ ok: true as const });
+  },
+
+  // --- Profile (own account) ----------------------------------------------------------------
+
+  getProfile: (): Promise<Profile> => delay({ ...DEMO_PROFILE }),
+
+  setProfileName: (name: string) => {
+    DEMO_PROFILE.name = name;
+    return delay({ success: true as const });
+  },
+
+  // WAHA's own profile GET has no status field to read back (write-only from the API's
+  // perspective) — the demo mirrors that honestly rather than faking a persisted value.
+  setProfileStatus: (_status: string) => delay({ success: true as const }),
+
+  setProfilePicture: (_file: OutgoingFile) => delay({ success: true as const }),
+
+  deleteProfilePicture: () => delay({ success: true as const }),
 };

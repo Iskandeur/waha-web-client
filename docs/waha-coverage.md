@@ -2,8 +2,17 @@
 
 Source: the running WAHA instance's own OpenAPI spec (`openapi: 3.1.0`, 138 paths / 195 schemas),
 pulled from its Swagger UI bundle. This is the canonical list of what WhatsApp's HTTP API surface
-(via WAHA) can do; whatsapp-sharp is a thin, deliberately-scoped product on top of it, not a 1:1
-client for the whole surface.
+(via WAHA) can do.
+
+**Ambition (as of the v8 pass):** whatsapp-sharp's goal shifted from "parity with the official
+WhatsApp client" to **exploiting as much of WAHA's API surface as is reasonably safe to expose**
+— including capabilities the official client doesn't offer at all (fine-grained group admin
+controls, invite-link management, programmatic membership actions). "Out of scope" below now
+means one of three things, and each row says which: **(a) not exposed by WAHA at all** (nothing
+to call), **(b) genuinely too high-risk for a public/self-hosted client** (pairing a real
+account, session lifecycle, server-stop), or **(c) a deliberate product-surface boundary**
+(Channels/Status/Chatwoot are whole other products, not incremental gaps). Every endpoint that
+doesn't fall into one of those three stays a live "todo" candidate rather than a permanent no.
 
 Status legend:
 - **done** — implemented behind `wahaFetch` (backend `src/waha-client.ts`) with a route and, where
@@ -39,7 +48,7 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `GET profile`, `PUT profile/name`, `PUT profile/status`, `PUT/DELETE profile/picture` | Settings page (view/edit my name, about, avatar) | todo | Reasonable future "Settings" screen; secondary to core messaging, deferred. |
+| `GET profile`, `PUT profile/name`, `PUT profile/status`, `PUT/DELETE profile/picture` | Settings screen (view/edit my name, about, avatar) | **done (v8 pass)** | `waha.getProfile`/`setProfileName`/`setProfileStatus`/`setProfilePicture`/`deleteProfilePicture`, routed in new `backend/src/routes/profile.ts`. New `SettingsPanel` component (gear icon in the sidebar). Note: WAHA's `MyProfile` schema has no "about" field to read back — `status` is write-only from the API's own perspective, so the Settings screen doesn't pretend to show a current value it can't fetch. |
 
 ## Sending messages
 
@@ -126,7 +135,21 @@ Grouped by WAHA's own module boundaries. Endpoint paths are session-scoped
 
 | Endpoints | Feature | Status | Why |
 |---|---|---|---|
-| `POST/GET groups`, `join-info`, `join`, `count`, `refresh`, `GET/DELETE groups/{id}`, `leave`, picture get/set/delete, `description`, `subject`, admin-only settings (get/set ×2), invite-code get/revoke, participants get/add/remove, admin promote/demote (21 endpoints) | Full group management (create, membership, admin controls) | todo | A whole product area on its own. Group *messaging* already works today (WAHA treats a group as just another `chatId`, so existing send/read routes work unmodified against a group chat) — what's missing is group *management* UI. Sequenced after the core messaging-richness gaps above. |
+| `POST/GET groups`, `join-info`, `join`, `count`, `refresh`, `GET/DELETE groups/{id}`, `leave`, picture get/set/delete, `description`, `subject`, admin-only settings (get/set ×2), invite-code get/revoke, participants (`v2`) get/add/remove, admin promote/demote | Full group management (create, membership, admin controls, invite links, security settings) | **done (v8 pass)** | Every group endpoint WAHA exposes is now wired — see "Added this job (v8 pass)" below. Group *messaging* already worked (WAHA treats a group as just another `chatId`), this closes the *management* gap: create/join/leave/delete a group, edit subject/description/photo, admin-only info/messages toggles, invite-link show/regenerate, and full participant/role management (add, remove, promote, demote) from a new `GroupPanel`. |
+| `GET groups` (legacy, non-`v2`) `.../participants` | Legacy participants list | **superseded** | `.../participants/v2` returns richer per-participant data (`role` enum, `@lid`/`pn` id forms) — same relationship as `listChats`→`chatsOverview`, so only `v2` is wired. |
+| `GET groups/count` | Count of groups | wired, no dedicated UI | `waha.getGroupsCount`/route exist; not surfaced in the UI (the group list itself, via the existing "Groups" chat-list filter, already answers "how many" visually) — low value to duplicate as a number. |
+| `POST groups/refresh` | Force-resync group cache from the server | wired, no dedicated UI | Same reasoning — an operator/debug affordance more than a product one; the route exists (`POST /api/groups/refresh`) for scripted/future use. |
+
+## Communities
+
+WhatsApp Communities (a parent container that groups several sub-groups together) have **no
+dedicated endpoints in WAHA's API** — verified directly against the live instance's own OpenAPI
+spec (the same one this whole doc is sourced from): no `communit*` path exists anywhere in its
+138 paths. WAHA's `groups` endpoints don't expose a community/parent-group relationship either
+(no `isCommunity`/`parentGroupId`-style field in `GroupParticipant`/group response schemas
+checked). Conclusion: **out of scope, not by product choice but because there's nothing to
+call** — this isn't a "todo," it's a hard API ceiling. If WAHA adds community support in a
+future version, revisit.
 
 ## Presence
 
@@ -349,6 +372,75 @@ pass, not yet specified. Also still deferred: `sendVoice` (needs an in-browser r
 lift than the other gaps), `sendPoll`/`sendPollVote` (multi-field composer UI), group management UI,
 and a Settings screen for profile.
 
+## Added this job (v8 pass)
+
+Brief (verbatim, paraphrased): stop targeting parity with the official WhatsApp client and
+instead exploit as much of WAHA's API surface as is safe to expose — including admin/power-user
+capabilities the official client doesn't have — with groups/communities/account settings as the
+priority order, and the anti-detection guard extended (never bypassed) to cover any new bulk
+action.
+
+**1. Communities** — investigated first, per the brief. **Not exposed by WAHA at all**: no
+`communit*` path anywhere in the live instance's 138-path OpenAPI spec, and no
+community/parent-group field on the `groups`/`GroupParticipant` schemas either. Documented as a
+hard API ceiling (see "Communities" section above), not a deferred todo — there's nothing to
+build against yet.
+
+**2. Groups — full management surface (23 operations, every group endpoint WAHA exposes):**
+`waha.listGroups`/`createGroup`/`getGroupsCount`/`refreshGroups`/`getGroupJoinInfo`/`joinGroup`/
+`getGroup`/`deleteGroup`/`leaveGroup`/`getGroupPicture`/`setGroupPicture`/`deleteGroupPicture`/
+`setGroupSubject`/`setGroupDescription`/`getGroupInfoAdminOnly`/`setGroupInfoAdminOnly`/
+`getGroupMessagesAdminOnly`/`setGroupMessagesAdminOnly`/`getGroupInviteCode`/
+`revokeGroupInviteCode`/`getGroupParticipants`/`addGroupParticipants`/`removeGroupParticipants`/
+`promoteGroupParticipants`/`demoteGroupParticipants` — all in `backend/src/waha-client.ts`, routed
+in a new `backend/src/routes/groups.ts` (`/api/groups/*`, 23 endpoints), mirrored in `demoApi`.
+Frontend: a new `GroupPanel` (opened from `ChatHeader`'s menu for group chats) covers photo
+upload/remove, inline subject/description edit, invite-link show/copy/regenerate, the two
+admin-only security toggles, and a participant list with promote/demote/remove per-row plus an
+"Add participants" flow (reuses `ContactPicker`, extended with a new multi-select mode). A new
+`NewGroupFlow` (multi-select contacts → name → create) and `JoinGroupModal` (paste a link/code,
+preview via `join-info`, then join) hang off a new dropdown on the sidebar's "+" button.
+**This is explicitly the "beyond the official client" case the brief called out**: per-group
+"only admins can edit info" / "only admins can send" toggles and one-click invite-link
+regeneration are both real WhatsApp features, but neither has a first-class control in the
+official mobile/desktop client the way this panel exposes them.
+
+**3. Anti-detection guard extended to group actions** — `addGroupParticipants`/
+`removeGroupParticipants`/`promoteGroupParticipants`/`demoteGroupParticipants` are bulk,
+scriptable membership mutations, i.e. the same abuse-detection signature the send-guard exists to
+slow down for messages. Rather than let them fire straight through `wahaFetch` uncapped (or,
+worse, bypass the guard "to move faster" per this job's explicit instruction not to), added a new
+sibling guard (`backend/src/guard/group-guard.ts`, `evaluateGroupAction`/`recordGroupAction`) with
+its own ceilings: a per-call participant-count cap (`GUARD_GROUP_MAX_PARTICIPANTS_PER_CALL`,
+default 20), a per-group and global per-minute/per-hour rate limit, and the same jittered delay
+`send-guard` uses — all env-tunable via `guard/config.ts`, all still gated by the shared circuit
+breaker. Wired into `waha-client.ts` via a new `groupActionGuarded` helper (mirrors `sendGuarded`'s
+shape) and a new `"group"` `GuardActionKind` in the audit log, so every group call — reads and
+mutations alike — is still logged the same way sends/presence calls already were. 7 new tests in
+`group-guard.test.ts` cover the cap, both rate limits, and the circuit-breaker interaction.
+
+**4. Profile / account settings** — `waha.getProfile`/`setProfileName`/`setProfileStatus`/
+`setProfilePicture`/`deleteProfilePicture`, routed in a new `backend/src/routes/profile.ts`
+(`/api/profile*`). Frontend: a new `SettingsPanel` (gear icon in the sidebar) — avatar
+upload/remove, inline name edit, an "About" field (write-only per WAHA's own `MyProfile` schema,
+so the UI doesn't pretend to show a value it can't fetch), and the read-only WhatsApp number.
+
+All new backend surface: implemented behind `wahaFetch`/routed per the established pattern,
+mirrored in `demoApi` (new `DEMO_PROFILE`, `DEMO_GROUP_PARTICIPANTS`/`_DESCRIPTIONS`/`_SETTINGS`/
+`_INVITE_CODES` in `demo-data.ts`) so the public demo still makes zero real WAHA calls. New
+validators (`isValidGroupName`, `isValidGroupDescription`, `isValidParticipantIds`,
+`isValidAdminsOnly`, `isValidInviteCode` in `groups.ts`; `isValidProfileName`/
+`isValidProfileStatus` in `profile.ts`) with their own unit tests. **69 backend tests total (was
+46)**. VPS deployment re-verified live at the end of this pass (PIN gate still active, no
+container/config changes needed — see the job report).
+
+**Not done this job** (still open, not silently skipped — the brief said "don't force finishing
+everything at once"): `sendVoice` (in-browser recorder), `sendPoll`/`sendPollVote` (multi-field
+composer UI), a location search/map picker, a "filter chat list by label" view, message
+pagination/infinite scroll, and the `GET groups/count`/`POST groups/refresh` endpoints, which are
+wired backend-side but have no dedicated UI (see the Groups table above for why they're low-value
+to surface as their own controls right now).
+
 ## What's next (highest-value gaps, not done this job)
 
 In rough priority order for a future pass: `sendVoice` (needs an in-browser recorder — the one
@@ -356,7 +448,9 @@ remaining "send" gap with real UI weight); a location **search/map picker** (cur
 only offers "my current position," not "search for an address" — `sendLocation` itself is done, this
 is a UI upgrade); `sendPoll`/`sendPollVote` (multi-field composer UI, vote-rendering in
 `MessageBubble`); a "filter chat list by label" view on top of the already-implemented
-`getChatsByLabel`; group *management* UI (group messaging already works — it's just another
-`chatId`); a Settings screen for profile (name/about/avatar); message pagination/infinite scroll
-(load older messages past the current 100-message window — would also let a `truncated: true` chat
-become "actually complete" on demand instead of just being flagged).
+`getChatsByLabel`; message pagination/infinite scroll (load older messages past the current
+100-message window — would also let a `truncated: true` chat become "actually complete" on demand
+instead of just being flagged); contact-management gaps still open from earlier passes (`GET
+contacts/{id}`, `GET contacts/about`, `POST contacts/block`/`unblock`, `PUT contacts/{chatId}`).
+Communities stay off this list entirely — not a priority-ordering choice, WAHA simply has no API
+for them yet (see "Communities" above).

@@ -3,8 +3,18 @@ import type { Chat, Contact } from "../api.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
+import { JoinGroupModal } from "./JoinGroupModal.js";
+import { NewGroupFlow } from "./NewGroupFlow.js";
+import { SettingsPanel } from "./SettingsPanel.js";
 import { StatusTicks } from "./StatusTicks.js";
-import { MailIcon, PinIcon, PlusIcon, SearchIcon } from "./icons.js";
+import {
+  MailIcon,
+  PinIcon,
+  PlusIcon,
+  SearchIcon,
+  SettingsIcon,
+  UsersIcon,
+} from "./icons.js";
 
 type Filter = "all" | "unread" | "groups" | "archived";
 
@@ -76,6 +86,8 @@ const FILTER_LABELS: Record<Filter, string> = {
   archived: "Archived",
 };
 
+type NewMenuAction = "new-chat" | "new-group" | "join-group" | null;
+
 export function ChatList({
   chats,
   selectedId,
@@ -83,6 +95,7 @@ export function ChatList({
   onToggleUnread,
   onStartNewChat,
   onStartNewChatFromContact,
+  onGroupCreatedOrJoined,
 }: {
   chats: Chat[];
   selectedId: string | null;
@@ -90,12 +103,15 @@ export function ChatList({
   onToggleUnread: (chatId: string) => void;
   onStartNewChat: (phone: string) => Promise<void>;
   onStartNewChatFromContact: (contact: Contact) => void;
+  onGroupCreatedOrJoined: (groupId: string, name?: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [startingChat, setStartingChat] = useState(false);
   const [startChatError, setStartChatError] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [activeAction, setActiveAction] = useState<NewMenuAction>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const archivedCount = useMemo(() => chats.filter((c) => c.isArchived).length, [chats]);
 
@@ -139,26 +155,90 @@ export function ChatList({
           }}
           placeholder="Search or start a new chat"
         />
+        <div className="sidebar-new-chat-wrap">
+          <button
+            type="button"
+            className="sidebar-new-chat-btn"
+            aria-label="New chat or group"
+            title="New chat or group"
+            onClick={() => setNewMenuOpen((v) => !v)}
+          >
+            <PlusIcon size={17} />
+          </button>
+          {newMenuOpen && (
+            <div className="chat-header-menu sidebar-new-menu">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewMenuOpen(false);
+                  setActiveAction("new-chat");
+                }}
+              >
+                <PlusIcon size={16} />
+                New chat
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewMenuOpen(false);
+                  setActiveAction("new-group");
+                }}
+              >
+                <UsersIcon size={16} />
+                New group
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewMenuOpen(false);
+                  setActiveAction("join-group");
+                }}
+              >
+                <UsersIcon size={16} />
+                Join group
+              </button>
+            </div>
+          )}
+        </div>
         <button
           type="button"
           className="sidebar-new-chat-btn"
-          aria-label="New chat"
-          title="New chat"
-          onClick={() => setPickerOpen(true)}
+          aria-label="Settings"
+          title="Settings"
+          onClick={() => setSettingsOpen(true)}
         >
-          <PlusIcon size={17} />
+          <SettingsIcon size={17} />
         </button>
       </div>
-      {pickerOpen && (
+      {activeAction === "new-chat" && (
         <ContactPicker
           title="New chat"
           onSelect={(contact) => {
             onStartNewChatFromContact(contact);
-            setPickerOpen(false);
+            setActiveAction(null);
           }}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => setActiveAction(null)}
         />
       )}
+      {activeAction === "new-group" && (
+        <NewGroupFlow
+          onCreated={(groupId, name) => {
+            onGroupCreatedOrJoined(groupId, name);
+            setActiveAction(null);
+          }}
+          onClose={() => setActiveAction(null)}
+        />
+      )}
+      {activeAction === "join-group" && (
+        <JoinGroupModal
+          onJoined={(groupId) => {
+            onGroupCreatedOrJoined(groupId);
+            setActiveAction(null);
+          }}
+          onClose={() => setActiveAction(null)}
+        />
+      )}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <div className="sidebar-filters">
         {(["all", "unread", "groups", "archived"] as const).map((f) => (
           <button

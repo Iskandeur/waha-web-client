@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { api, type Chat } from "../api.js";
 import { formatPresence } from "../format.js";
 import { Avatar } from "./Avatar.js";
-import { ArchiveIcon, MoreVerticalIcon, SearchIcon, TagIcon, TrashIcon } from "./icons.js";
+import { GroupPanel } from "./GroupPanel.js";
+import { ArchiveIcon, MoreVerticalIcon, SearchIcon, TagIcon, TrashIcon, UsersIcon } from "./icons.js";
 import { LabelsMenu } from "./LabelsMenu.js";
 
 export function ChatHeader({
@@ -10,15 +11,20 @@ export function ChatHeader({
   onToggleArchive,
   onClearMessages,
   onDeleteChat,
+  onGroupSubjectChange,
+  onGroupLeftOrDeleted,
 }: {
   chat: Chat;
   onToggleArchive: () => void;
   onClearMessages: () => void;
   onDeleteChat: () => void;
+  onGroupSubjectChange: (chatId: string, subject: string) => void;
+  onGroupLeftOrDeleted: (chatId: string) => void;
 }) {
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [groupPanelOpen, setGroupPanelOpen] = useState(false);
   // Falls back to the chat list's static presence text until the live fetch resolves — a group
   // chat has no single peer presence, so it keeps the "who's in it" text either way.
   const [presence, setPresence] = useState<string | undefined>(chat.presence);
@@ -26,6 +32,7 @@ export function ChatHeader({
   useEffect(() => {
     setMenuOpen(false);
     setLabelsOpen(false);
+    setGroupPanelOpen(false);
   }, [chat.id]);
 
   useEffect(() => {
@@ -68,6 +75,18 @@ export function ChatHeader({
           </button>
           {menuOpen && (
             <div className="chat-header-menu">
+              {chat.isGroup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setGroupPanelOpen(true);
+                  }}
+                >
+                  <UsersIcon size={16} />
+                  Group info
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -114,6 +133,18 @@ export function ChatHeader({
           {labelsOpen && <LabelsMenu chatId={chat.id} onClose={() => setLabelsOpen(false)} />}
         </div>
       </div>
+      {groupPanelOpen && (
+        <GroupPanel
+          groupId={chat.id}
+          groupName={chat.name}
+          onClose={() => setGroupPanelOpen(false)}
+          onSubjectChange={(subject) => onGroupSubjectChange(chat.id, subject)}
+          onLeftOrDeleted={() => {
+            setGroupPanelOpen(false);
+            onGroupLeftOrDeleted(chat.id);
+          }}
+        />
+      )}
     </header>
   );
 }

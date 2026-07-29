@@ -11,6 +11,8 @@ import { contactsRoutes } from "./routes/contacts.js";
 import { aiRoutes } from "./routes/ai.js";
 import { guardRoutes } from "./routes/guard.js";
 import { labelsRoutes } from "./routes/labels.js";
+import { groupsRoutes } from "./routes/groups.js";
+import { profileRoutes } from "./routes/profile.js";
 import { accessRoutes } from "./routes/access.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +34,8 @@ await app.register(contactsRoutes);
 await app.register(aiRoutes);
 await app.register(guardRoutes);
 await app.register(labelsRoutes);
+await app.register(groupsRoutes);
+await app.register(profileRoutes);
 
 // Serves the built frontend (frontend/dist) when present — lets a single container run the
 // static demo without a separate web server. Absent in plain `npm run dev:backend` (frontend

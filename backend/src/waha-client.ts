@@ -2,7 +2,9 @@ import { config } from "./config.js";
 import {
   auditLog,
   circuitBreaker,
+  evaluateGroupAction,
   evaluateSend,
+  recordGroupAction,
   recordSendAttempt,
   typingDurationMs,
   type GuardActionKind,
@@ -68,6 +70,32 @@ export interface WahaContactCard {
   phoneNumber: string;
   whatsappId?: string;
   vcard: string | null;
+}
+
+export interface WahaGroup {
+  id: string;
+  subject?: string;
+  [key: string]: unknown;
+}
+
+/** Matches WAHA's `GroupParticipant` schema — `id` is `@lid` or `@c.us` depending on the
+ *  group's own privacy mode, `pn` (when present) is always the `@c.us` phone-number form. */
+export interface WahaGroupParticipant {
+  id: string;
+  pn?: string;
+  role: "left" | "participant" | "admin" | "superadmin";
+}
+
+export interface WahaGroupJoinInfo {
+  id?: string;
+  subject?: string;
+  [key: string]: unknown;
+}
+
+export interface WahaProfile {
+  id: string;
+  picture: string | null;
+  name: string;
 }
 
 export class WahaError extends Error {
@@ -200,6 +228,49 @@ async function sendGuarded<T>(
   await waha.startTyping(chatId, session).catch(() => undefined);
   await delay(typingDurationMs(text));
   await waha.stopTyping(chatId, session).catch(() => undefined);
+
+  return perform();
+}
+
+/** Shared plumbing behind every bulk group-membership mutation (add/remove/promote/demote):
+ *  runs the group-action guard (participant-count cap, per-group/global rate limits — may
+ *  throw `GuardBlockedError`), applies its jittered delay, records the attempt, then hands off
+ *  to `perform` for the actual WAHA call. Mirrors `sendGuarded`'s shape but scoped to group
+ *  actions rather than message sends (see `guard/group-guard.ts`). */
+async function groupActionGuarded<T>(
+  groupId: string,
+  participantIds: string[],
+  session: string,
+  perform: () => Promise<T>,
+): Promise<T> {
+  const now = Date.now();
+  const decision = evaluateGroupAction(groupId, participantIds.length, session, now);
+
+  if (!decision.allow) {
+    auditLog.push({
+      ts: now,
+      kind: "group",
+      session,
+      chatId: groupId,
+      decision: "blocked",
+      reason: decision.reason,
+    });
+    throw new GuardBlockedError(decision.reason);
+  }
+
+  auditLog.push({
+    ts: now,
+    kind: "group",
+    session,
+    chatId: groupId,
+    decision: decision.delayMs > 0 ? "delayed" : "allowed",
+    reason: decision.reason,
+    delayMs: decision.delayMs,
+  });
+
+  if (decision.delayMs > 0) await delay(decision.delayMs);
+
+  recordGroupAction(groupId, session);
 
   return perform();
 }
@@ -534,5 +605,269 @@ export const waha = {
       `/api/${session}/labels/${encodeURIComponent(labelId)}/chats`,
       {},
       { kind: "read", session },
+    ),
+
+  // --- Groups ------------------------------------------------------------------------------
+  // Full group-management surface: creation, membership, admin controls, invite links, and
+  // per-group security settings. WAHA treats a group as just another chatId for messaging (the
+  // existing send/read routes already work against `123@g.us`) — everything here is the
+  // *management* layer that messaging alone doesn't cover.
+
+  listGroups: (session = config.wahaSession) =>
+    wahaFetch<WahaGroup[]>(`/api/${session}/groups`, {}, { kind: "group", session }),
+
+  createGroup: (name: string, participantIds: string[], session = config.wahaSession) =>
+    wahaFetch<WahaGroup>(
+      `/api/${session}/groups`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name, participants: participantIds.map((id) => ({ id })) }),
+      },
+      { kind: "group", session },
+    ),
+
+  getGroupsCount: (session = config.wahaSession) =>
+    wahaFetch<{ count: number }>(`/api/${session}/groups/count`, {}, { kind: "group", session }),
+
+  /** Forces WAHA to re-sync its group cache from the server — useful after joining a group
+   *  through some other client and not seeing it show up yet. */
+  refreshGroups: (session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/refresh`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "group", session },
+    ),
+
+  /** Previews a group (name, size, ...) from an invite code/link before actually joining. */
+  getGroupJoinInfo: (code: string, session = config.wahaSession) =>
+    wahaFetch<WahaGroupJoinInfo>(
+      `/api/${session}/groups/join-info?code=${encodeURIComponent(code)}`,
+      {},
+      { kind: "group", session },
+    ),
+
+  joinGroup: (code: string, session = config.wahaSession) =>
+    wahaFetch<{ id: string }>(
+      `/api/${session}/groups/join`,
+      { method: "POST", body: JSON.stringify({ code }) },
+      { kind: "group", session },
+    ),
+
+  getGroup: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<WahaGroup>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** Destructive: deletes the group outright (only the group's creator/superadmin can — WAHA
+   *  enforces that server-side, we don't duplicate the check here). Different from `leaveGroup`
+   *  below, which just removes *you*. */
+  deleteGroup: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}`,
+      { method: "DELETE" },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  leaveGroup: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/leave`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  getGroupPicture: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<{ url: string | null }>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/picture`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  setGroupPicture: (groupId: string, file: WahaFileInput, session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/picture`,
+      { method: "PUT", body: JSON.stringify({ file }) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  deleteGroupPicture: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/picture`,
+      { method: "DELETE" },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** Returns `false` (not an error) when we lack permission to rename the group — WAHA's own
+   *  documented behavior, not something we translate into a thrown error here. */
+  setGroupSubject: (groupId: string, subject: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/subject`,
+      { method: "PUT", body: JSON.stringify({ subject }) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  setGroupDescription: (groupId: string, description: string, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/description`,
+      { method: "PUT", body: JSON.stringify({ description }) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** "Info admin only": restricts editing the group's title/description/photo to admins. */
+  getGroupInfoAdminOnly: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<{ adminsOnly: boolean }>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/settings/security/info-admin-only`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  setGroupInfoAdminOnly: (groupId: string, adminsOnly: boolean, session = config.wahaSession) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/settings/security/info-admin-only`,
+      { method: "PUT", body: JSON.stringify({ adminsOnly }) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** "Messages admin only": restricts sending messages in the group to admins — WhatsApp's
+   *  "announcement group" mode. */
+  getGroupMessagesAdminOnly: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<{ adminsOnly: boolean }>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/settings/security/messages-admin-only`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  setGroupMessagesAdminOnly: (
+    groupId: string,
+    adminsOnly: boolean,
+    session = config.wahaSession,
+  ) =>
+    wahaFetch<void>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/settings/security/messages-admin-only`,
+      { method: "PUT", body: JSON.stringify({ adminsOnly }) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  getGroupInviteCode: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<string>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/invite-code`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** Invalidates the current invite link and generates a fresh one — anyone with the old link
+   *  loses the ability to join. */
+  revokeGroupInviteCode: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<string>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/invite-code/revoke`,
+      { method: "POST", body: JSON.stringify({}) },
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** The "v2" participants endpoint (richer per-participant `role`, and `@lid`/`pn` id forms)
+   *  — the legacy non-v2 endpoint is superseded by this one, same as `listChats` was by
+   *  `chatsOverview`. */
+  getGroupParticipants: (groupId: string, session = config.wahaSession) =>
+    wahaFetch<WahaGroupParticipant[]>(
+      `/api/${session}/groups/${encodeURIComponent(groupId)}/participants/v2`,
+      {},
+      { kind: "group", session, chatId: groupId },
+    ),
+
+  /** Bulk membership mutations — guarded (`groupActionGuarded`) the same way sends are, since
+   *  scripted mass add/remove/promote/demote across a group is exactly the pattern WhatsApp's
+   *  abuse detection watches for. */
+  addGroupParticipants: (groupId: string, participantIds: string[], session = config.wahaSession) =>
+    groupActionGuarded(groupId, participantIds, session, () =>
+      wahaFetch<unknown>(
+        `/api/${session}/groups/${encodeURIComponent(groupId)}/participants/add`,
+        {
+          method: "POST",
+          body: JSON.stringify({ participants: participantIds.map((id) => ({ id })) }),
+        },
+        { kind: "group", session, chatId: groupId },
+      ),
+    ),
+
+  removeGroupParticipants: (
+    groupId: string,
+    participantIds: string[],
+    session = config.wahaSession,
+  ) =>
+    groupActionGuarded(groupId, participantIds, session, () =>
+      wahaFetch<unknown>(
+        `/api/${session}/groups/${encodeURIComponent(groupId)}/participants/remove`,
+        {
+          method: "POST",
+          body: JSON.stringify({ participants: participantIds.map((id) => ({ id })) }),
+        },
+        { kind: "group", session, chatId: groupId },
+      ),
+    ),
+
+  promoteGroupParticipants: (
+    groupId: string,
+    participantIds: string[],
+    session = config.wahaSession,
+  ) =>
+    groupActionGuarded(groupId, participantIds, session, () =>
+      wahaFetch<unknown>(
+        `/api/${session}/groups/${encodeURIComponent(groupId)}/admin/promote`,
+        {
+          method: "POST",
+          body: JSON.stringify({ participants: participantIds.map((id) => ({ id })) }),
+        },
+        { kind: "group", session, chatId: groupId },
+      ),
+    ),
+
+  demoteGroupParticipants: (
+    groupId: string,
+    participantIds: string[],
+    session = config.wahaSession,
+  ) =>
+    groupActionGuarded(groupId, participantIds, session, () =>
+      wahaFetch<unknown>(
+        `/api/${session}/groups/${encodeURIComponent(groupId)}/admin/demote`,
+        {
+          method: "POST",
+          body: JSON.stringify({ participants: participantIds.map((id) => ({ id })) }),
+        },
+        { kind: "group", session, chatId: groupId },
+      ),
+    ),
+
+  // --- Profile (own account) ----------------------------------------------------------------
+
+  getProfile: (session = config.wahaSession) =>
+    wahaFetch<WahaProfile>(`/api/${session}/profile`, {}, { kind: "read", session }),
+
+  setProfileName: (name: string, session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/profile/name`,
+      { method: "PUT", body: JSON.stringify({ name }) },
+      { kind: "send", session },
+    ),
+
+  setProfileStatus: (status: string, session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/profile/status`,
+      { method: "PUT", body: JSON.stringify({ status }) },
+      { kind: "send", session },
+    ),
+
+  setProfilePicture: (file: WahaFileInput, session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/profile/picture`,
+      { method: "PUT", body: JSON.stringify({ file }) },
+      { kind: "send", session },
+    ),
+
+  deleteProfilePicture: (session = config.wahaSession) =>
+    wahaFetch<{ success: boolean }>(
+      `/api/${session}/profile/picture`,
+      { method: "DELETE" },
+      { kind: "send", session },
     ),
 };

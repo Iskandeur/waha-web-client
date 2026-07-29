@@ -3,12 +3,16 @@
 > Name note: repo/slug is `whatsapp-sharp`, stylized **WhatsApp#** (à la C#/F#).
 
 A self-hosted WhatsApp web client: a small Node/TypeScript backend that talks to a
-[WAHA](https://waha.devlike.pro/) (WhatsApp HTTP API) instance, and a React SPA on top,
-built feature-parity-first with the official client (chat list, threads, read receipts,
-media, groups) — plus two things beyond that baseline: a real **[anti-detection
-guard](#anti-detection-guard)** sitting between every backend call and WAHA (rate limits,
-jitter, typing simulation, burst/duplicate-content detection, a circuit breaker), and a
-**natural-language AI command bar** driven by the
+[WAHA](https://waha.devlike.pro/) (WhatsApp HTTP API) instance, and a React SPA on top. It started
+feature-parity-first with the official client (chat list, threads, read receipts, media) and has
+since gone past that baseline on purpose — the goal is to expose as much of WAHA's API surface as
+is reasonably safe to, including group-admin/account controls (per-group "info/messages admin
+only" toggles, invite-link regeneration, bulk membership actions) that the official WhatsApp
+client doesn't offer at all. See [`docs/waha-coverage.md`](docs/waha-coverage.md) for the full
+endpoint-by-endpoint map. Two things sit on top of that: a real **[anti-detection
+guard](#anti-detection-guard)** between every backend call and WAHA (rate limits, jitter, typing
+simulation, burst/duplicate-content detection, a circuit breaker — extended to cover bulk group
+actions too, never bypassed), and a **natural-language AI command bar** driven by the
 [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude -p`), for things like
 "summarize this thread" or "draft a friendly reply" without leaving the keyboard.
 
@@ -87,6 +91,13 @@ What it actually checks, in order, for every send (`backend/src/guard/send-guard
    proportional to the message length (clamped to a sane range), then `stopTyping`,
    *before* the actual send. No message goes out without a typing indicator having shown
    first — same as a human typing it.
+
+A sibling guard, `group-guard.ts`, applies the same philosophy to **bulk group-membership
+actions** (add/remove/promote/demote participants) added in a later pass: a per-call
+participant-count cap, per-group and global rate limits, and the same jittered delay — because
+scripted mass membership changes are exactly the kind of abuse signature this guard exists to
+slow down, and "it's not technically a message send" is not a reason to skip it. Every group
+route funnels through it the same non-optional way `sendText` funnels through `send-guard.ts`.
 
 Every decision — allowed, delayed, or blocked, and why — is written to an in-memory,
 size-capped audit log (`audit-log.ts`), inspectable via `GET /api/guard/status` (circuit

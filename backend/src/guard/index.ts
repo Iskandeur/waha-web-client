@@ -10,3 +10,9 @@ export {
   __resetSendGuardForTests,
 } from "./send-guard.js";
 export type { SendGuardDecision } from "./send-guard.js";
+export {
+  evaluateGroupAction,
+  recordGroupAction,
+  __resetGroupGuardForTests,
+} from "./group-guard.js";
+export type { GroupActionGuardDecision } from "./group-guard.js";

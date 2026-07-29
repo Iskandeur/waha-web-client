@@ -101,6 +101,32 @@ export interface Contact {
   number?: string;
 }
 
+export interface Group {
+  id: string;
+  subject?: string;
+  [key: string]: unknown;
+}
+
+export type GroupParticipantRole = "left" | "participant" | "admin" | "superadmin";
+
+export interface GroupParticipant {
+  id: string;
+  pn?: string;
+  role: GroupParticipantRole;
+}
+
+export interface GroupJoinInfo {
+  id?: string;
+  subject?: string;
+  [key: string]: unknown;
+}
+
+export interface Profile {
+  id: string;
+  picture: string | null;
+  name: string;
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.text();
@@ -308,6 +334,166 @@ const realApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ labelIds }),
     }).then((r) => json<{ ok: true }>(r)),
+
+  // --- Groups ------------------------------------------------------------------------------
+
+  listGroups: () => fetch("/api/groups").then((r) => json<Group[]>(r)),
+
+  createGroup: (name: string, participantIds: string[]) =>
+    fetch("/api/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, participantIds }),
+    }).then((r) => json<Group>(r)),
+
+  getGroupJoinInfo: (code: string) =>
+    fetch(`/api/groups/join-info?code=${encodeURIComponent(code)}`).then((r) =>
+      json<GroupJoinInfo>(r),
+    ),
+
+  joinGroup: (code: string) =>
+    fetch("/api/groups/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }).then((r) => json<{ id: string }>(r)),
+
+  getGroup: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}`).then((r) => json<Group>(r)),
+
+  deleteGroup: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}`, { method: "DELETE" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  leaveGroup: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/leave`, { method: "POST" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  getGroupPicture: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/picture`).then((r) =>
+      json<{ url: string | null }>(r),
+    ),
+
+  setGroupPicture: (groupId: string, file: OutgoingFile) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/picture`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file }),
+    }).then((r) => json<{ success: boolean }>(r)),
+
+  deleteGroupPicture: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/picture`, { method: "DELETE" }).then((r) =>
+      json<{ ok: true }>(r),
+    ),
+
+  setGroupSubject: (groupId: string, subject: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/subject`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  setGroupDescription: (groupId: string, description: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/description`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  getGroupInfoAdminOnly: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/settings/info-admin-only`).then((r) =>
+      json<{ adminsOnly: boolean }>(r),
+    ),
+
+  setGroupInfoAdminOnly: (groupId: string, adminsOnly: boolean) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/settings/info-admin-only`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminsOnly }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  getGroupMessagesAdminOnly: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/settings/messages-admin-only`).then((r) =>
+      json<{ adminsOnly: boolean }>(r),
+    ),
+
+  setGroupMessagesAdminOnly: (groupId: string, adminsOnly: boolean) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/settings/messages-admin-only`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminsOnly }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  getGroupInviteCode: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/invite-code`).then((r) => json<string>(r)),
+
+  revokeGroupInviteCode: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/invite-code/revoke`, {
+      method: "POST",
+    }).then((r) => json<string>(r)),
+
+  getGroupParticipants: (groupId: string) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/participants`).then((r) =>
+      json<GroupParticipant[]>(r),
+    ),
+
+  addGroupParticipants: (groupId: string, participantIds: string[]) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/participants/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantIds }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  removeGroupParticipants: (groupId: string, participantIds: string[]) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/participants/remove`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantIds }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  promoteGroupParticipants: (groupId: string, participantIds: string[]) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/admin/promote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantIds }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  demoteGroupParticipants: (groupId: string, participantIds: string[]) =>
+    fetch(`/api/groups/${encodeURIComponent(groupId)}/admin/demote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantIds }),
+    }).then((r) => json<{ ok: true }>(r)),
+
+  // --- Profile (own account) ----------------------------------------------------------------
+
+  getProfile: () => fetch("/api/profile").then((r) => json<Profile>(r)),
+
+  setProfileName: (name: string) =>
+    fetch("/api/profile/name", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then((r) => json<{ success: boolean }>(r)),
+
+  setProfileStatus: (status: string) =>
+    fetch("/api/profile/status", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).then((r) => json<{ success: boolean }>(r)),
+
+  setProfilePicture: (file: OutgoingFile) =>
+    fetch("/api/profile/picture", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file }),
+    }).then((r) => json<{ success: boolean }>(r)),
+
+  deleteProfilePicture: () =>
+    fetch("/api/profile/picture", { method: "DELETE" }).then((r) => json<{ success: boolean }>(r)),
 };
 
 export const api = DEMO_MODE ? demoApi : realApi;

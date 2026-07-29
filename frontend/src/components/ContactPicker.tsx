@@ -1,27 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Contact } from "../api.js";
 import { Avatar } from "./Avatar.js";
-import { SearchIcon } from "./icons.js";
+import { CheckIcon, SearchIcon } from "./icons.js";
 
 function initials(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "#";
 }
 
-/** Shared "pick a contact" popover — backs both starting a new chat and sharing a contact card.
- *  Self-contained (fetches its own data), same pattern as `LabelsMenu`. */
+/** Shared "pick a contact" popover — backs starting a new chat, sharing a contact card, and
+ *  (in multi-select mode) building a participant list for group creation/add-members. Self-
+ *  contained (fetches its own data), same pattern as `LabelsMenu`. Pass `onSelectMultiple`
+ *  instead of `onSelect` to switch into checkbox mode with a confirm button. */
 export function ContactPicker({
   title,
   onSelect,
+  onSelectMultiple,
   onClose,
+  excludeIds,
+  confirmLabel = "Add",
 }: {
   title: string;
-  onSelect: (contact: Contact) => void;
+  onSelect?: (contact: Contact) => void;
+  onSelectMultiple?: (contacts: Contact[]) => void;
   onClose: () => void;
+  excludeIds?: string[];
+  confirmLabel?: string;
 }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<string[]>([]);
+  const multi = Boolean(onSelectMultiple);
 
   useEffect(() => {
     api
@@ -33,11 +43,21 @@ export function ContactPicker({
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return contacts;
-    return contacts.filter((c) =>
-      [c.name, c.pushname, c.number].some((f) => f?.toLowerCase().includes(q)),
-    );
-  }, [contacts, query]);
+    return contacts
+      .filter((c) => !excludeIds?.includes(c.id))
+      .filter((c) =>
+        q ? [c.name, c.pushname, c.number].some((f) => f?.toLowerCase().includes(q)) : true,
+      );
+  }, [contacts, query, excludeIds]);
+
+  function toggle(id: string) {
+    setSelected((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
+  }
+
+  function confirmMultiple() {
+    const picked = contacts.filter((c) => selected.includes(c.id));
+    onSelectMultiple?.(picked);
+  }
 
   return (
     <div className="contact-picker-overlay" onClick={onClose}>
@@ -62,17 +82,34 @@ export function ContactPicker({
             const name = c.name || c.pushname || c.number || c.id;
             return (
               <li key={c.id}>
-                <button type="button" className="contact-picker-item" onClick={() => onSelect(c)}>
+                <button
+                  type="button"
+                  className="contact-picker-item"
+                  onClick={() => (multi ? toggle(c.id) : onSelect?.(c))}
+                >
                   <Avatar initials={initials(name)} color="#64748b" size={36} />
                   <div className="contact-picker-item-body">
                     <span className="contact-picker-item-name">{name}</span>
                     {c.number && <span className="contact-picker-item-number">{c.number}</span>}
                   </div>
+                  {multi && selected.includes(c.id) && (
+                    <CheckIcon size={16} className="contact-picker-item-check" />
+                  )}
                 </button>
               </li>
             );
           })}
         </ul>
+        {multi && (
+          <button
+            type="button"
+            className="new-chat-btn"
+            disabled={selected.length === 0}
+            onClick={confirmMultiple}
+          >
+            {confirmLabel} {selected.length > 0 ? `(${selected.length})` : ""}
+          </button>
+        )}
         <button type="button" className="contact-picker-close" onClick={onClose}>
           Cancel
         </button>

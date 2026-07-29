@@ -44,5 +44,13 @@ export const guardConfig = {
   circuitBreakerWindowMs: num("GUARD_BREAKER_WINDOW_MS", 5 * 60_000),
   circuitBreakerCooldownMs: num("GUARD_BREAKER_COOLDOWN_MS", 15 * 60_000),
 
+  // Group participant/admin mutations (add/remove/promote/demote) are bulk, scriptable actions —
+  // exactly the abuse-detection signature the rest of this guard exists to avoid, so they get
+  // their own ceilings rather than firing straight through to WAHA uncapped.
+  groupActionMaxParticipantsPerCall: num("GUARD_GROUP_MAX_PARTICIPANTS_PER_CALL", 20),
+  groupActionMaxPerGroupPerMinute: num("GUARD_GROUP_MAX_PER_GROUP_PER_MIN", 2),
+  groupActionMaxGlobalPerMinute: num("GUARD_GROUP_MAX_GLOBAL_PER_MIN", 5),
+  groupActionMaxGlobalPerHour: num("GUARD_GROUP_MAX_GLOBAL_PER_HOUR", 30),
+
   auditLogMaxEntries: num("GUARD_AUDIT_LOG_MAX", 500),
 };
