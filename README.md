@@ -242,6 +242,18 @@ copy `deploy/.env.example` to `deploy/.env` (git-ignored), fill in real values, 
 cd deploy && docker compose up -d --build
 ```
 
+### Security: network bind
+
+The backend (`backend/src/server.ts`, guarded by `backend/src/bind-guard.ts`) binds to
+`HOST` (env var, default `127.0.0.1`) — loopback-only by default, so it's never reachable off-box
+without something (a Docker `-p 127.0.0.1:...` mapping, a reverse proxy, a tunnel) explicitly
+putting it there. If `HOST` is set to anything else (most commonly `0.0.0.0`, to listen on every
+interface including a public one), the server **refuses to start** unless `ACCESS_PIN` is also
+set — a wide-open, unauthenticated bind can't happen silently. `deploy/docker-compose.yml` never
+needs to touch `HOST` at all: it maps the container's internal `0.0.0.0` bind (required for
+Docker's own port publishing to reach it) to `127.0.0.1:${HOST_PORT}` on the *host*, which is the
+layer that actually determines off-box reachability.
+
 ## Status / checkpoint
 
 Second pass, pivoted after feedback that the first checkpoint's UI was too bare-bones: the
