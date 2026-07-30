@@ -306,6 +306,11 @@ Still open / not done in this pass (honest gaps, not silently skipped):
 6. Tighten the guard's warm-up detection to a real session-start signal instead of backend
    process boot time, once WAHA's session metadata is verified against a live instance.
 
+Asks that are accepted but deliberately **not** scheduled yet (a token-budget slider trading
+features against tokens spent, and a billing/spend view — both required to work with `claude -p`
+*and* Codex CLI) live in [`docs/backlog.md`](docs/backlog.md), so they don't get lost between
+passes.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
