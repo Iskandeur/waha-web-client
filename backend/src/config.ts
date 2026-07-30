@@ -5,6 +5,11 @@ export const config = {
   wahaApiKey: process.env.WAHA_API_KEY ?? "",
   wahaSession: process.env.WAHA_SESSION ?? "default",
   port: Number(process.env.PORT ?? 8787),
+  // Interface the HTTP server binds to (see bind-guard.ts). Defaults to loopback-only — a
+  // deployment that genuinely needs to listen more broadly (e.g. no reverse proxy/tunnel in
+  // front) must set this explicitly, and bind-guard refuses to start unless ACCESS_PIN is also
+  // set, so a wide-open bind can never happen silently.
+  host: process.env.HOST ?? "127.0.0.1",
   claudeBin: process.env.CLAUDE_BIN ?? "claude",
   // PIN gate for public deployments (see access-gate.ts). Empty = gate disabled.
   accessPin: process.env.ACCESS_PIN ?? "",

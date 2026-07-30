@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { GuardBlockedError, waha, type WahaFileInput } from "../waha-client.js";
+import { waha, type WahaFileInput } from "../waha-client.js";
 import { isValidFile } from "./chats.js";
 
 /** A group name/subject just needs non-empty text, same shape as any other display name. */
@@ -30,16 +30,6 @@ export function isValidAdminsOnly(v: unknown): v is boolean {
 
 export function isValidInviteCode(code: unknown): code is string {
   return typeof code === "string" && code.trim().length > 0;
-}
-
-function guarded<T>(fn: () => Promise<T>, reply: { code: (n: number) => void }) {
-  return fn().catch((err) => {
-    if (err instanceof GuardBlockedError) {
-      reply.code(429);
-      return { error: "blocked-by-guard", reason: err.reason };
-    }
-    throw err;
-  });
 }
 
 export async function groupsRoutes(app: FastifyInstance) {
@@ -203,10 +193,8 @@ export async function groupsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "participantIds must be a non-empty array of strings" };
       }
-      return guarded(
-        () => waha.addGroupParticipants(req.params.id, participantIds).then(() => ({ ok: true })),
-        reply,
-      );
+      await waha.addGroupParticipants(req.params.id, participantIds);
+      return { ok: true };
     },
   );
 
@@ -218,11 +206,8 @@ export async function groupsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "participantIds must be a non-empty array of strings" };
       }
-      return guarded(
-        () =>
-          waha.removeGroupParticipants(req.params.id, participantIds).then(() => ({ ok: true })),
-        reply,
-      );
+      await waha.removeGroupParticipants(req.params.id, participantIds);
+      return { ok: true };
     },
   );
 
@@ -234,11 +219,8 @@ export async function groupsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "participantIds must be a non-empty array of strings" };
       }
-      return guarded(
-        () =>
-          waha.promoteGroupParticipants(req.params.id, participantIds).then(() => ({ ok: true })),
-        reply,
-      );
+      await waha.promoteGroupParticipants(req.params.id, participantIds);
+      return { ok: true };
     },
   );
 
@@ -250,11 +232,8 @@ export async function groupsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "participantIds must be a non-empty array of strings" };
       }
-      return guarded(
-        () =>
-          waha.demoteGroupParticipants(req.params.id, participantIds).then(() => ({ ok: true })),
-        reply,
-      );
+      await waha.demoteGroupParticipants(req.params.id, participantIds);
+      return { ok: true };
     },
   );
 }

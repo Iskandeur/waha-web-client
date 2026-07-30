@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import {
-  GuardBlockedError,
   waha,
   type WahaButton,
   type WahaFileInput,
@@ -159,15 +158,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "text is required" };
       }
-      try {
-        return await waha.sendText(req.params.chatId, text);
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendText(req.params.chatId, text);
     },
   );
 
@@ -179,15 +170,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "file (mimetype + url or data) is required" };
       }
-      try {
-        return await waha.sendImage(req.params.chatId, file, caption);
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendImage(req.params.chatId, file, caption);
     },
   );
 
@@ -199,15 +182,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "file (mimetype + url or data) is required" };
       }
-      try {
-        return await waha.sendFile(req.params.chatId, file, caption);
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendFile(req.params.chatId, file, caption);
     },
   );
 
@@ -219,15 +194,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "file (mimetype + url or data) is required" };
       }
-      try {
-        return await waha.sendVideo(req.params.chatId, file, caption);
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendVideo(req.params.chatId, file, caption);
     },
   );
 
@@ -239,15 +206,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "file (mimetype + url or data) is required" };
       }
-      try {
-        return await waha.sendVoice(req.params.chatId, file);
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendVoice(req.params.chatId, file);
     },
   );
 
@@ -266,15 +225,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         error: `options must be an array of ${POLL_MIN_OPTIONS}-${POLL_MAX_OPTIONS} non-empty strings`,
       };
     }
-    try {
-      return await waha.sendPoll(req.params.chatId, name, options, multipleAnswers ?? false);
-    } catch (err) {
-      if (err instanceof GuardBlockedError) {
-        reply.code(429);
-        return { error: "blocked-by-guard", reason: err.reason };
-      }
-      throw err;
-    }
+    return waha.sendPoll(req.params.chatId, name, options, multipleAnswers ?? false);
   });
 
   app.post<{ Params: { chatId: string; messageId: string }; Body: { votes: string[] } }>(
@@ -298,20 +249,12 @@ export async function chatsRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "latitude/longitude must be valid coordinates" };
       }
-      try {
-        return await waha.sendLocation(
-          req.params.chatId,
-          latitude,
-          longitude,
-          title?.trim() || "Shared location",
-        );
-      } catch (err) {
-        if (err instanceof GuardBlockedError) {
-          reply.code(429);
-          return { error: "blocked-by-guard", reason: err.reason };
-        }
-        throw err;
-      }
+      return waha.sendLocation(
+        req.params.chatId,
+        latitude,
+        longitude,
+        title?.trim() || "Shared location",
+      );
     },
   );
 
@@ -326,17 +269,9 @@ export async function chatsRoutes(app: FastifyInstance) {
     }
     const whatsappId = contactId.replace(/@.*$/, "");
     const fullName = name?.trim() || whatsappId;
-    try {
-      return await waha.sendContactVcard(req.params.chatId, [
-        { fullName, phoneNumber: phoneNumber?.trim() || whatsappId, whatsappId, vcard: null },
-      ]);
-    } catch (err) {
-      if (err instanceof GuardBlockedError) {
-        reply.code(429);
-        return { error: "blocked-by-guard", reason: err.reason };
-      }
-      throw err;
-    }
+    return waha.sendContactVcard(req.params.chatId, [
+      { fullName, phoneNumber: phoneNumber?.trim() || whatsappId, whatsappId, vcard: null },
+    ]);
   });
 
   app.put<{ Params: { chatId: string; messageId: string }; Body: { reaction: string } }>(
@@ -460,15 +395,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       reply.code(400);
       return { error: `buttons must be 1-${BUTTONS_MAX} entries with a non-empty id and text` };
     }
-    try {
-      return await waha.sendButtons(req.params.chatId, body, buttons, footer);
-    } catch (err) {
-      if (err instanceof GuardBlockedError) {
-        reply.code(429);
-        return { error: "blocked-by-guard", reason: err.reason };
-      }
-      throw err;
-    }
+    return waha.sendButtons(req.params.chatId, body, buttons, footer);
   });
 
   app.post<{
@@ -488,14 +415,6 @@ export async function chatsRoutes(app: FastifyInstance) {
       reply.code(400);
       return { error: "sections must be a non-empty array of { title, rows: [{ rowId, title }] }" };
     }
-    try {
-      return await waha.sendList(req.params.chatId, body, buttonText, sections, footer);
-    } catch (err) {
-      if (err instanceof GuardBlockedError) {
-        reply.code(429);
-        return { error: "blocked-by-guard", reason: err.reason };
-      }
-      throw err;
-    }
+    return waha.sendList(req.params.chatId, body, buttonText, sections, footer);
   });
 }
