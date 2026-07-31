@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -19,6 +20,8 @@ export function JoinGroupModal({
   const [preview, setPreview] = useState<{ subject?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEscapeToClose(onClose);
 
   function extractCode(input: string): string {
     const match = input.trim().match(/chat\.whatsapp\.com\/([A-Za-z0-9]+)/);

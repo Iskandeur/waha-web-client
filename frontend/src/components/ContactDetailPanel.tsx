@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Chat, type Contact } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { Avatar } from "./Avatar.js";
 import { ShieldIcon, XIcon } from "./icons.js";
 
@@ -26,6 +27,8 @@ export function ContactDetailPanel({
   const [about, setAbout] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(onClose);
 
   useEffect(() => {
     setLoading(true);

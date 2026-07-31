@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { MapPinIcon, SearchIcon } from "./icons.js";
 
 interface PlaceResult {
@@ -39,6 +40,8 @@ export function LocationPicker({
   const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(onClose);
 
   function shareCurrentLocation() {
     if (!navigator.geolocation) {

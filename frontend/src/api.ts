@@ -183,6 +183,19 @@ export interface Profile {
   name: string;
 }
 
+/** Mirrors the backend's `sendGuardStatus()` (`GET /api/guard/status`) — read-only introspection
+ *  into the anti-detection guard so the client can show "is it safe to send right now" without
+ *  a human grepping logs. */
+export interface GuardStatus {
+  warmingUp: boolean;
+  warmupEndsAt: number;
+  circuitBreaker: {
+    open: boolean;
+    openUntil: number | null;
+    recentFailures: number;
+  };
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.text();
@@ -627,6 +640,10 @@ const realApi = {
 
   deleteProfilePicture: () =>
     fetch("/api/profile/picture", { method: "DELETE" }).then((r) => json<{ success: boolean }>(r)),
+
+  // --- Guard (anti-detection) ---------------------------------------------------------------
+
+  getGuardStatus: () => fetch("/api/guard/status").then((r) => json<GuardStatus>(r)),
 };
 
 export const api = DEMO_MODE ? demoApi : realApi;

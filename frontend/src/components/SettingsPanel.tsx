@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { api, type Profile } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { Avatar } from "./Avatar.js";
 import { CameraIcon, PencilIcon, TrashIcon, XIcon } from "./icons.js";
 
@@ -36,6 +37,8 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [savingStatus, setSavingStatus] = useState(false);
 
   const pictureInputRef = useRef<HTMLInputElement>(null);
+
+  useEscapeToClose(onClose);
 
   useEffect(() => {
     api
@@ -118,7 +121,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="group-panel-body">
             <div className="group-panel-picture">
-              <Avatar initials={profile.name.slice(0, 1).toUpperCase() || "#"} color="#0ea5a4" size={72} src={profile.picture} />
+              <Avatar initials={profile.name.slice(0, 1).toUpperCase() || "#"} color="#8fa073" size={72} src={profile.picture} />
               <input
                 ref={pictureInputRef}
                 type="file"

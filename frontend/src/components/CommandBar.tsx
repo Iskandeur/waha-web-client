@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 
 /** The AI powerbar: free-text instructions ("summarize this thread", "draft a
  *  friendly reply", "what did they say about the trip?") run through the
@@ -15,6 +16,24 @@ export function CommandBar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+
+  // "/" opens the bar from anywhere except when it would swallow a "/" the user is actually
+  // typing somewhere else (any focused input/textarea) or when it's already open.
+  useEffect(() => {
+    if (open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const typing = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        setOpen(true);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  useEscapeToClose(() => setOpen(false));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -35,14 +54,14 @@ export function CommandBar({
   if (!open) {
     return (
       <button className="command-bar-toggle" onClick={() => setOpen(true)}>
-        ✨ Ask AI about this chat
+        <span className="command-bar-mark">#</span> Ask AI about this chat
       </button>
     );
   }
 
   return (
     <form className="command-bar" onSubmit={submit}>
-      <span className="command-bar-icon">✨</span>
+      <span className="command-bar-icon command-bar-mark">#</span>
       <input
         autoFocus
         className="command-bar-input"

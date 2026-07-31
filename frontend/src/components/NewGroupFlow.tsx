@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type Contact } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { ContactPicker } from "./ContactPicker.js";
 
 function errorMessage(err: unknown): string {
@@ -20,6 +21,8 @@ export function NewGroupFlow({
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  useEscapeToClose(onClose);
 
   if (!participants) {
     return (

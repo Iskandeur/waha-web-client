@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, type Chat, type Contact } from "../api.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
+import { GuardIndicator } from "./GuardIndicator.js";
 import { JoinGroupModal } from "./JoinGroupModal.js";
 import { LabelFilter } from "./LabelFilter.js";
 import { NewGroupFlow } from "./NewGroupFlow.js";
@@ -11,6 +12,9 @@ import { StatusTicks } from "./StatusTicks.js";
 import { MailIcon, PinIcon, PlusIcon, SearchIcon, SettingsIcon, UsersIcon } from "./icons.js";
 
 type Filter = "all" | "unread" | "groups" | "archived";
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+const SEARCH_KBD_LABEL = IS_MAC ? "⌘K" : "Ctrl K";
 
 /** A query is "phone-shaped" once it has enough digits to plausibly be a number rather than a
  *  name search — lets the empty-results state offer "start a chat with +1 555…" without
@@ -108,8 +112,22 @@ export function ChatList({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [labelFilterId, setLabelFilterId] = useState<string | null>(null);
   const [labelFilterChatIds, setLabelFilterChatIds] = useState<string[] | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const archivedCount = useMemo(() => chats.filter((c) => c.isArchived).length, [chats]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const wantsSearch = e.key.toLowerCase() === "k" && (IS_MAC ? e.metaKey : e.ctrlKey);
+      if (wantsSearch) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!labelFilterId) {
@@ -153,16 +171,13 @@ export function ChatList({
 
   return (
     <div className="sidebar-inner">
-      <div className="sidebar-search">
-        <SearchIcon size={16} className="sidebar-search-icon" />
-        <input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setStartChatError(null);
-          }}
-          placeholder="Search or start a new chat"
-        />
+      <div className="sidebar-brand">
+        <div className="brand-mark">#</div>
+        <div className="brand-name">
+          WhatsApp<span className="brand-accent">#</span>
+        </div>
+        <div className="sidebar-brand-spacer" />
+        <GuardIndicator />
         <div className="sidebar-new-chat-wrap">
           <button
             type="button"
@@ -217,6 +232,19 @@ export function ChatList({
         >
           <SettingsIcon size={17} />
         </button>
+      </div>
+      <div className="sidebar-search">
+        <SearchIcon size={16} className="sidebar-search-icon" />
+        <input
+          ref={searchRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setStartChatError(null);
+          }}
+          placeholder="Search or start a new chat"
+        />
+        <span className="sidebar-kbd-hint">{SEARCH_KBD_LABEL}</span>
       </div>
       {activeAction === "new-chat" && (
         <ContactPicker
@@ -284,6 +312,17 @@ export function ChatList({
           </li>
         )}
       </ul>
+      <div className="sidebar-hints">
+        <span>
+          <kbd>{SEARCH_KBD_LABEL}</kbd> search
+        </span>
+        <span>
+          <kbd>/</kbd> AI
+        </span>
+        <span>
+          <kbd>Esc</kbd> close
+        </span>
+      </div>
     </div>
   );
 }

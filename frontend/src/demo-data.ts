@@ -5,6 +5,7 @@ import type {
   Group,
   GroupJoinInfo,
   GroupParticipant,
+  GuardStatus,
   Label,
   ListSection,
   Message,
@@ -94,7 +95,7 @@ export const DEMO_CHATS: Chat[] = [
     id: "demo-2",
     name: "Sam — trip planning",
     avatarInitials: "S",
-    avatarColor: "#8b5cf6",
+    avatarColor: "#f6a06b",
     pinned: true,
     unreadCount: 3,
     presence: "online",
@@ -104,7 +105,7 @@ export const DEMO_CHATS: Chat[] = [
     id: "demo-1",
     name: "Alex",
     avatarInitials: "A",
-    avatarColor: "#0ea5a4",
+    avatarColor: "#aebf92",
     unreadCount: 2,
     presence: "online",
     ...lastMessageFields("demo-1"),
@@ -113,7 +114,7 @@ export const DEMO_CHATS: Chat[] = [
     id: "demo-3",
     name: "Team lunch 🍜",
     avatarInitials: "TL",
-    avatarColor: "#f59e0b",
+    avatarColor: "#dcd3c4",
     isGroup: true,
     participantsCount: 5,
     presence: "Priya, Marco, +3 others",
@@ -123,7 +124,7 @@ export const DEMO_CHATS: Chat[] = [
     id: "demo-4",
     name: "Jordan",
     avatarInitials: "J",
-    avatarColor: "#3b82f6",
+    avatarColor: "#ccdbb2",
     presence: "last seen today at 09:14",
     ...lastMessageFields("demo-4"),
   },
@@ -131,7 +132,7 @@ export const DEMO_CHATS: Chat[] = [
     id: "demo-5",
     name: "Book club 📚",
     avatarInitials: "BC",
-    avatarColor: "#ef4444",
+    avatarColor: "#ffe1d0",
     isGroup: true,
     participantsCount: 8,
     presence: "Noor, Tariq, +6 others",
@@ -689,7 +690,7 @@ export const demoApi = {
       id,
       name,
       avatarInitials: name.trim().slice(0, 2).toUpperCase() || "G",
-      avatarColor: "#8b5cf6",
+      avatarColor: "#aebf92",
       isGroup: true,
       participantsCount: participantIds.length + 1,
     };
@@ -713,7 +714,7 @@ export const demoApi = {
       id,
       name: "Joined demo group",
       avatarInitials: "JG",
-      avatarColor: "#0ea5a4",
+      avatarColor: "#aebf92",
       isGroup: true,
       participantsCount: 6,
     };
@@ -836,4 +837,15 @@ export const demoApi = {
   setProfilePicture: (_file: OutgoingFile) => delay({ success: true as const }),
 
   deleteProfilePicture: () => delay({ success: true as const }),
+
+  // --- Guard (anti-detection) ----------------------------------------------------------------
+
+  // No real send-guard runs against demo data — always reports healthy rather than faking a
+  // breaker trip that could never actually happen here.
+  getGuardStatus: (): Promise<GuardStatus> =>
+    delay({
+      warmingUp: false,
+      warmupEndsAt: 0,
+      circuitBreaker: { open: false, openUntil: null, recentFailures: 0 },
+    }),
 };

@@ -17,7 +17,7 @@ function Svg({
       viewBox="0 0 24 24"
       fill={fill}
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2.75}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}

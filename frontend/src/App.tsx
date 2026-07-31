@@ -19,6 +19,7 @@ import { CommandBar } from "./components/CommandBar.js";
 function WelcomeScreen() {
   return (
     <div className="empty-state">
+      <div className="empty-state-mark">#</div>
       <div className="empty-state-title">WhatsApp#</div>
       <p>Select a chat to start reading — or ask the AI bar about one once it's open.</p>
     </div>
@@ -362,7 +363,7 @@ export default function App() {
       id: result.chatId,
       name: phone.trim(),
       avatarInitials: digits.slice(-2) || "#",
-      avatarColor: "#64748b",
+      avatarColor: "#dcd3c4",
     };
     setChats((cs) => [newChat, ...cs]);
     setSelectedId(newChat.id);
@@ -382,7 +383,7 @@ export default function App() {
       id: groupId,
       name: label,
       avatarInitials: label.slice(0, 2).toUpperCase() || "#",
-      avatarColor: "#8b5cf6",
+      avatarColor: "#aebf92",
       isGroup: true,
     };
     setChats((cs) => [newChat, ...cs]);
@@ -414,7 +415,7 @@ export default function App() {
       id: contact.id,
       name,
       avatarInitials: name.slice(0, 1).toUpperCase() || "#",
-      avatarColor: "#64748b",
+      avatarColor: "#dcd3c4",
     };
     setChats((cs) => [newChat, ...cs]);
     setSelectedId(newChat.id);
@@ -443,7 +444,8 @@ export default function App() {
     <div className="app">
       {DEMO_MODE && (
         <div className="demo-banner">
-          🎭 Demo — mock data only, not connected to any real WhatsApp account
+          <span className="demo-banner-dot" />
+          Demo — mock data only, not connected to any real WhatsApp account
         </div>
       )}
       <div className="app-body">
@@ -459,6 +461,8 @@ export default function App() {
           />
         </aside>
         <main className="main">
+          <div className="chat-decor chat-decor-1" />
+          <div className="chat-decor chat-decor-2" />
           {selectedChat ? (
             <>
               <ChatHeader

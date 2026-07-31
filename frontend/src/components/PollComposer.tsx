@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { TrashIcon } from "./icons.js";
 
 /** New-poll modal — same overlay/card pattern as `ContactPicker`. WhatsApp allows 2-12 options
@@ -15,6 +16,8 @@ export function PollComposer({
   const [name, setName] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [multipleAnswers, setMultipleAnswers] = useState(false);
+
+  useEscapeToClose(onClose);
 
   const trimmedOptions = options.map((o) => o.trim()).filter((o) => o.length > 0);
   const canSubmit =

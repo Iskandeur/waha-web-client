@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Contact } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { Avatar } from "./Avatar.js";
 import { CheckIcon, SearchIcon } from "./icons.js";
 
@@ -32,6 +33,8 @@ export function ContactPicker({
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const multi = Boolean(onSelectMultiple);
+
+  useEscapeToClose(onClose);
 
   useEffect(() => {
     api
@@ -87,7 +90,7 @@ export function ContactPicker({
                   className="contact-picker-item"
                   onClick={() => (multi ? toggle(c.id) : onSelect?.(c))}
                 >
-                  <Avatar initials={initials(name)} color="#64748b" size={36} />
+                  <Avatar initials={initials(name)} color="#dcd3c4" size={36} />
                   <div className="contact-picker-item-body">
                     <span className="contact-picker-item-name">{name}</span>
                     {c.number && <span className="contact-picker-item-number">{c.number}</span>}

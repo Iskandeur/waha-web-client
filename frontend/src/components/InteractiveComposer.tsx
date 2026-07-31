@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { ListSection, MessageButton } from "../api.js";
 import { BUTTONS_MAX } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { TrashIcon } from "./icons.js";
 
 type Mode = "buttons" | "list";
@@ -27,6 +28,8 @@ export function InteractiveComposer({
   const [buttonTexts, setButtonTexts] = useState(["", ""]);
   const [listButtonText, setListButtonText] = useState("View options");
   const [rows, setRows] = useState([{ title: "", description: "" }]);
+
+  useEscapeToClose(onClose);
 
   const trimmedButtons = buttonTexts.map((t) => t.trim()).filter(Boolean);
   const trimmedRows = rows.map((r) => ({ ...r, title: r.title.trim() })).filter((r) => r.title);

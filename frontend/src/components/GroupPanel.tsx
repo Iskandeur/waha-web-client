@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { api, type Contact, type GroupParticipant } from "../api.js";
+import { useEscapeToClose } from "../useEscapeToClose.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
 import {
@@ -80,6 +81,8 @@ export function GroupPanel({
   const [inviteCopied, setInviteCopied] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEscapeToClose(onClose);
 
   useEffect(() => {
     setSubjectDraft(groupName);
@@ -297,7 +300,7 @@ export function GroupPanel({
 
         <div className="group-panel-body">
           <div className="group-panel-picture">
-            <Avatar initials={initials(groupName)} color="#8b5cf6" size={72} src={pictureUrl} />
+            <Avatar initials={initials(groupName)} color="#aebf92" size={72} src={pictureUrl} />
             <input
               ref={pictureInputRef}
               type="file"
@@ -421,7 +424,7 @@ export function GroupPanel({
             <ul className="group-panel-participants">
               {participants.map((p) => (
                 <li key={p.id} className="group-panel-participant">
-                  <Avatar initials={initials(shortId(p.id))} color="#64748b" size={32} />
+                  <Avatar initials={initials(shortId(p.id))} color="#dcd3c4" size={32} />
                   <span className="group-panel-participant-id">{shortId(p.pn ?? p.id)}</span>
                   {(p.role === "admin" || p.role === "superadmin") && (
                     <span className="group-panel-role-badge" title={p.role}>
