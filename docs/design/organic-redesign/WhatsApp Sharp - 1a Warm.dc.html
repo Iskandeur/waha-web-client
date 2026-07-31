@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/organic-74431ccd-5090-4ccf-a421-4b1ee0be7ce5/styles.css">
+<script src="_ds/organic-74431ccd-5090-4ccf-a421-4b1ee0be7ce5/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--color-bg);overflow:hidden}
+a{color:var(--color-accent-700);text-decoration:none}a:hover{color:var(--color-accent)}
+input,textarea,button{font-family:var(--font-body)}
+@keyframes badgePop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+@keyframes bubbleIn{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+@keyframes threadIn{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes popIn{from{transform:translateY(6px) scale(.96);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+@keyframes slideIn{from{transform:translateX(34px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes caret{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-3px);opacity:1}}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.4);opacity:0}}
+@keyframes recPulse{0%,100%{opacity:1}50%{opacity:.3}}
+.wa-in{animation:bubbleIn .42s cubic-bezier(.2,.9,.3,1) both}
+.wa-row{transition:background .18s ease}
+.wa-row:hover{background:color-mix(in srgb,var(--color-accent) 9%,transparent)}
+.wa-ico{transition:background .16s ease,color .16s ease,transform .16s ease}
+.wa-ico:hover{background:color-mix(in srgb,var(--color-accent) 14%,transparent);color:var(--color-accent-700);transform:translateY(-1px)}
+.wa-ico:active{transform:translateY(0) scale(.94)}
+.wa-send{transition:transform .18s cubic-bezier(.2,1.4,.4,1),background .16s ease}
+.wa-send:hover{transform:scale(1.07) rotate(-6deg);background:var(--color-accent-600)}
+.wa-send:active{transform:scale(.93)}
+.wa-pill{transition:background .16s ease,color .16s ease,border-color .16s ease}
+.wa-pill:hover{border-color:var(--color-accent-400)}
+.wa-menu-item{transition:background .14s ease}
+.wa-menu-item:hover{background:var(--color-accent-100)}
+.wa-emoji{transition:transform .14s cubic-bezier(.2,1.5,.4,1)}
+.wa-emoji:hover{transform:scale(1.35)}
+.wa-scroll{scrollbar-width:thin;scrollbar-color:var(--color-neutral-400) transparent}
+</style></helmet>
+
+<div style="display:flex;flex-direction:column;height:100vh;font-family:var(--font-body);color:var(--color-text);background:var(--color-bg)">
+
+  <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;background:var(--color-accent-200);color:var(--color-accent-800);font-size:11.5px;font-weight:600;letter-spacing:.01em">
+    <span style="width:6px;height:6px;border-radius:999px;background:var(--color-accent-600)"></span>
+    Demo — mock data only, not connected to any real WhatsApp account
+  </div>
+
+  <div style="display:flex;flex:1;min-height:0">
+
+    <aside style="width:344px;flex:none;background:var(--color-neutral-100);border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-height:0">
+      <div style="padding:18px 20px 12px;display:flex;align-items:center;gap:10px;position:relative">
+        <div style="width:34px;height:34px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;font-family:var(--font-heading);font-size:19px;line-height:1;padding-bottom:2px">#</div>
+        <div style="font-family:var(--font-heading);font-size:20px;letter-spacing:-.01em">WhatsApp<span style="color:var(--color-accent)">#</span></div>
+        <div style="flex:1"></div>
+        <sc-if value="{{ guardDot }}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{ toggleGuard }}" title="Anti-detection guard" style="position:relative;width:26px;height:26px;border-radius:999px;border:none;background:transparent;cursor:pointer;display:grid;place-items:center">
+            <span style="position:relative;width:9px;height:9px;display:block"><span style="position:absolute;inset:0;border-radius:999px;background:var(--color-accent-2-500)"></span><span style="position:absolute;inset:0;border-radius:999px;background:var(--color-accent-2-500);animation:breathe 2.6s ease-out infinite"></span></span>
+          </button>
+        </sc-if>
+        <button type="button" class="wa-ico" onClick="{{ toggleNewMenu }}" title="New chat or group" style="width:32px;height:32px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+        <button type="button" class="wa-ico" onClick="{{ openSettings }}" title="Settings" style="width:32px;height:32px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"></path><path d="M5 17h14"></path><circle cx="10" cy="7" r="2.4" fill="var(--color-neutral-100)"></circle><circle cx="15" cy="17" r="2.4" fill="var(--color-neutral-100)"></circle></svg></button>
+
+        <sc-if value="{{ guardOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:popIn .2s ease both;position:absolute;top:52px;right:64px;z-index:30;width:266px;background:var(--color-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:8px;height:8px;border-radius:999px;background:var(--color-accent-2-500)"></span><b style="font-size:13px">Guard healthy</b></div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11.5px;color:var(--color-neutral-700)">
+              <span>Circuit breaker</span><b style="color:var(--color-accent-2-700)">closed</b>
+              <span>Per chat</span><b>3/min · 20/hour</b>
+              <span>Global</span><b>8/min · 80/hour</b>
+              <span>Warm-up</span><b>finished</b>
+              <span>Typing simulation</span><b style="color:var(--color-accent-2-700)">on</b>
+            </div>
+            <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--color-divider);font-size:11px;color:var(--color-neutral-600);line-height:1.5">Last decision · allowed with 1.4s jitter<br>Sam — trip planning, 09:13</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ newMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:popIn .2s ease both;position:absolute;top:52px;right:56px;z-index:30;width:190px;background:var(--color-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:6px;overflow:hidden">
+            <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>New chat</button>
+            <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"></path><path d="M16.5 4.7a3.5 3.5 0 0 1 0 6.6"></path><path d="M21.5 20c0-3-2.1-5.5-5-6.3"></path></svg>New group</button>
+            <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5 14.5 9.5"></path><path d="M11 6.5 13 4.5a3.5 3.5 0 0 1 5 5l-2 2"></path><path d="M13 17.5 11 19.5a3.5 3.5 0 0 1-5-5l2-2"></path></svg>Join group</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="margin:0 20px 12px;display:flex;align-items:center;gap:10px;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:999px;padding:9px 15px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-neutral-600);flex:none"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <input ref="{{ searchRef }}" value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search or start a new chat" style="flex:1;min-width:0;background:none;border:none;outline:none;font-size:13.5px;color:var(--color-text)">
+        <span style="font:600 10px ui-monospace,monospace;color:var(--color-neutral-600);border:1px solid var(--color-divider);border-radius:6px;padding:2px 6px;letter-spacing:.03em">Ctrl K</span>
+      </div>
+
+      <div style="display:flex;gap:6px;padding:0 20px 14px;flex-wrap:wrap">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+          <button type="button" class="wa-pill" onClick="{{ f.onClick }}" style="padding:5px 13px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};border:1px solid {{ f.border }}">{{ f.label }}</button>
+        </sc-for>
+      </div>
+
+      <div class="wa-scroll" style="flex:1;overflow-y:auto;padding:0 10px 14px;min-height:0">
+        <sc-for list="{{ visibleChats }}" as="c" hint-placeholder-count="5">
+          <div class="wa-row" onClick="{{ c.onSelect }}" style="display:flex;align-items:center;gap:13px;padding:{{ c.pad }};border-radius:var(--radius-md);cursor:pointer;background:{{ c.bg }}">
+            <div style="flex:none;width:{{ c.size }};height:{{ c.size }};border-radius:999px;display:grid;place-items:center;font-family:var(--font-heading);font-size:{{ c.initialsSize }};background:{{ c.color }};color:{{ c.ink }}">{{ c.initials }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                <span style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span>
+                <span style="flex:none;font-size:11px;color:{{ c.timeColor }};font-weight:{{ c.timeWeight }}">{{ c.time }}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <span style="display:flex;align-items:center;gap:5px;min-width:0;font-size:13px;color:var(--color-neutral-700)">
+                  <sc-if value="{{ c.showTicks }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;color:{{ c.tickColor }}"><path d="M2 12l5 5L18 6"></path><path d="M9 15l1.5 1.5L22 6"></path></svg></sc-if>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.preview }}</span>
+                </span>
+                <sc-if value="{{ c.unread }}" hint-placeholder-val="{{ false }}">
+                  <span style="animation:badgePop .5s cubic-bezier(.2,1.5,.4,1) both;flex:none;background:var(--color-accent);color:var(--color-bg);font-size:11px;font-weight:700;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;padding:0 6px">{{ c.unread }}</span>
+                </sc-if>
+                <sc-if value="{{ c.showPin }}" hint-placeholder-val="{{ false }}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;color:var(--color-neutral-600)"><path d="M12 2c-2.8 0-5 2.2-5 5 0 3.5 5 10 5 10s5-6.5 5-10c0-2.8-2.2-5-5-5Z"></path><circle cx="12" cy="7" r="2"></circle></svg>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noChats }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:26px 16px;text-align:center;color:var(--color-neutral-600);font-size:13px">No chats match.</div>
+        </sc-if>
+      </div>
+
+      <div style="flex:none;padding:10px 20px;border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:12px;font-size:10.5px;color:var(--color-neutral-600)">
+        <span><b style="font-family:ui-monospace,monospace">Ctrl K</b> search</span>
+        <span><b style="font-family:ui-monospace,monospace">/</b> AI</span>
+        <span><b style="font-family:ui-monospace,monospace">esc</b> close</span>
+      </div>
+    </aside>
+
+    <main style="flex:1;display:flex;flex-direction:column;min-width:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-130px;right:-90px;width:340px;height:340px;border-radius:999px;background:var(--color-accent-200);opacity:.45;pointer-events:none"></div>
+      <div style="position:absolute;bottom:-160px;left:-70px;width:300px;height:300px;border-radius:999px;background:var(--color-accent-2-200);opacity:.4;pointer-events:none"></div>
+
+      <sc-if value="{{ noSelection }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative;margin:auto;text-align:center;max-width:420px;padding:24px;animation:fadeIn .4s ease both">
+          <div style="width:88px;height:88px;margin:0 auto 18px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;font-family:var(--font-heading);font-size:46px;line-height:1;padding-bottom:6px;box-shadow:var(--shadow-md)">#</div>
+          <h2 style="margin:0 0 8px;font-family:var(--font-heading);font-size:32px">WhatsApp#</h2>
+          <p style="font-size:14.5px;color:var(--color-neutral-700);line-height:1.6">Pick a chat to start reading — or hit <b style="font-family:ui-monospace,monospace">/</b> once one is open and ask the AI bar about it.</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ true }}">
+        <div style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--color-divider);position:relative">
+            <button type="button" onClick="{{ openInfo }}" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0;background:none;border:none;cursor:pointer;padding:0;text-align:left;color:inherit">
+              <div style="flex:none;width:44px;height:44px;border-radius:999px;display:grid;place-items:center;font-family:var(--font-heading);font-size:{{ active.initialsSize }};background:{{ active.color }};color:{{ active.ink }}">{{ active.initials }}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--font-heading);font-size:19px;line-height:1.15">{{ active.name }}</div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-accent-2-700)"><span style="width:7px;height:7px;border-radius:999px;background:var(--color-accent-2-500)"></span>{{ active.presence }}</div>
+              </div>
+            </button>
+            <span class="tag tag-accent-2" style="font-size:11px">{{ active.tag }}</span>
+            <button type="button" class="wa-ico" title="Search in chat" style="width:36px;height:36px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg></button>
+            <button type="button" class="wa-ico" onClick="{{ toggleHeaderMenu }}" title="Chat menu" style="width:36px;height:36px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75"><circle cx="12" cy="5" r="1.4" fill="currentColor"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor"></circle><circle cx="12" cy="19" r="1.4" fill="currentColor"></circle></svg></button>
+            <sc-if value="{{ headerMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="animation:popIn .2s ease both;position:absolute;top:58px;right:20px;z-index:30;width:206px;background:var(--color-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:6px">
+                <button type="button" class="wa-menu-item" onClick="{{ openInfo }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>{{ active.infoLabel }}</button>
+                <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 12.3 12.7 20.2a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1 0-2.8L10.8 2.5a2 2 0 0 1 1.4-.6H19a2 2 0 0 1 2 2v6.9a2 2 0 0 1-.4 1.5Z"></path><circle cx="15.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"></circle></svg>Labels</button>
+                <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"></rect><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path><path d="M10 13h4"></path></svg>Archive chat</button>
+                <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6Z"></path><path d="M9 12l2 2 4-4"></path></svg>Block contact</button>
+                <div style="height:1px;background:var(--color-divider);margin:5px 8px"></div>
+                <button type="button" class="wa-menu-item" onClick="{{ closeMenus }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-accent-700);cursor:pointer;text-align:left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"></path><path d="M6 7l1 12.5A2 2 0 0 0 9 21h6a2 2 0 0 0 2-1.5L18 7"></path></svg>Delete chat</button>
+              </div>
+            </sc-if>
+          </header>
+
+          <div class="wa-scroll" ref="{{ threadRef }}" style="flex:1;min-height:0;overflow-y:auto;padding:20px 40px 8px;display:flex;flex-direction:column;gap:9px;animation:threadIn .32s ease both">
+            <div style="align-self:center;font-size:11px;color:var(--color-neutral-700);background:var(--color-neutral-200);border-radius:999px;padding:5px 14px">{{ historyNotice }}</div>
+            <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+              <sc-if value="{{ it.isDate }}" hint-placeholder-val="{{ false }}">
+                <div style="align-self:center;font-size:11.5px;font-weight:600;color:var(--color-neutral-700);background:var(--color-neutral-200);border-radius:999px;padding:5px 14px;margin-top:6px">{{ it.label }}</div>
+              </sc-if>
+              <sc-if value="{{ it.isMsg }}" hint-placeholder-val="{{ true }}">
+                <div class="{{ it.anim }}" onMouseEnter="{{ it.onEnter }}" onMouseLeave="{{ it.onLeave }}" style="position:relative;align-self:{{ it.align }};max-width:62%;min-width:96px;background:{{ it.bg }};color:{{ it.fg }};border:1px solid {{ it.border }};border-radius:{{ it.radius }};padding:10px 14px;box-shadow:var(--shadow-sm)">
+                  <sc-if value="{{ it.showSender }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-family:var(--font-heading);font-size:12.5px;color:{{ it.senderColor }};margin-bottom:3px">{{ it.sender }}</div>
+                  </sc-if>
+                  <sc-if value="{{ it.pinned }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;opacity:.7;margin-bottom:3px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-2.8 0-5 2.2-5 5 0 3.5 5 10 5 10s5-6.5 5-10c0-2.8-2.2-5-5-5Z"></path><circle cx="12" cy="7" r="2"></circle></svg>Pinned</div>
+                  </sc-if>
+                  <sc-if value="{{ it.isText }}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ it.body }}</div>
+                  </sc-if>
+                  <sc-if value="{{ it.isImage }}" hint-placeholder-val="{{ false }}">
+                    <div style="width:250px;height:158px;border-radius:12px;background:var(--color-neutral-300);display:grid;place-items:center;color:var(--color-neutral-700)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg></div>
+                    <div style="font-size:13.5px;line-height:1.5;margin-top:7px">{{ it.body }}</div>
+                  </sc-if>
+                  <sc-if value="{{ it.isFile }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:11px;background:var(--color-neutral-200);border-radius:12px;padding:10px 12px;min-width:210px">
+                      <div style="width:34px;height:34px;border-radius:999px;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path></svg></div>
+                      <div style="min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.mediaName }}</div><div style="font-size:11px;color:var(--color-neutral-600)">{{ it.mediaMeta }}</div></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ it.isVoice }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:11px;min-width:212px">
+                      <div style="width:32px;height:32px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8V4Z"></path></svg></div>
+                      <div style="flex:1;display:flex;align-items:center;gap:2.5px;height:26px">
+                        <sc-for list="{{ wave }}" as="w" hint-placeholder-count="22"><span style="flex:1;border-radius:999px;background:{{ w.color }};height:{{ w.h }}"></span></sc-for>
+                      </div>
+                      <span style="font-size:11px;color:var(--color-neutral-600);flex:none">{{ it.mediaMeta }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ it.isPoll }}" hint-placeholder-val="{{ false }}">
+                    <div style="min-width:246px">
+                      <div style="font-family:var(--font-heading);font-size:14.5px;margin-bottom:8px">{{ it.body }}</div>
+                      <sc-for list="{{ it.pollOptions }}" as="p" hint-placeholder-count="3">
+                        <div class="wa-row" style="display:flex;align-items:center;gap:9px;background:var(--color-neutral-200);border-radius:999px;padding:7px 12px;margin-bottom:5px;cursor:pointer;position:relative;overflow:hidden">
+                          <span style="position:absolute;left:0;top:0;bottom:0;background:var(--color-accent-200);width:{{ p.pct }}"></span>
+                          <span style="position:relative;flex:1;font-size:13px">{{ p.name }}</span>
+                          <span style="position:relative;font-size:11px;font-weight:700;color:var(--color-accent-700)">{{ p.votes }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="font-size:10.5px;color:var(--color-neutral-600);margin-top:2px">Select one</div>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;justify-content:flex-end;align-items:center;gap:5px;margin-top:3px">
+                    <sc-if value="{{ it.starred }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="color:var(--color-accent-400)"><path d="M12 2.5l2.9 6.1 6.6.8-4.8 4.6 1.2 6.6-5.9-3.2-5.9 3.2 1.2-6.6-4.8-4.6 6.6-.8Z"></path></svg></sc-if>
+                    <span style="font-size:10.5px;color:{{ it.metaColor }}">{{ it.time }}</span>
+                    <sc-if value="{{ it.showTicks }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:{{ it.tickColor }}"><path d="M2 12l5 5L18 6"></path><path d="M9 15l1.5 1.5L22 6"></path></svg></sc-if>
+                  </div>
+                  <sc-if value="{{ it.reaction }}" hint-placeholder-val="{{ false }}">
+                    <div style="animation:badgePop .4s cubic-bezier(.2,1.5,.4,1) both;position:absolute;bottom:-11px;left:12px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:var(--shadow-sm)">{{ it.reaction }}</div>
+                  </sc-if>
+                  <sc-if value="{{ it.hovered }}" hint-placeholder-val="{{ false }}">
+                    <div style="animation:popIn .16s ease both;position:absolute;top:-16px;{{ it.actionsSide }}:8px;display:flex;align-items:center;gap:2px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:999px;padding:3px;box-shadow:var(--shadow-md);z-index:5">
+                      <button type="button" class="wa-ico" onClick="{{ it.onPicker }}" title="React" style="width:26px;height:26px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14s1.5 2 3.5 2 3.5-2 3.5-2"></path><path d="M9 9h.01"></path><path d="M15 9h.01"></path></svg></button>
+                      <button type="button" class="wa-ico" onClick="{{ it.onStar }}" title="Star" style="width:26px;height:26px;border-radius:999px;border:none;background:transparent;color:{{ it.starColor }};display:grid;place-items:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.9 6.1 6.6.8-4.8 4.6 1.2 6.6-5.9-3.2-5.9 3.2 1.2-6.6-4.8-4.6 6.6-.8Z"></path></svg></button>
+                      <button type="button" class="wa-ico" onClick="{{ it.onPin }}" title="Pin" style="width:26px;height:26px;border-radius:999px;border:none;background:transparent;color:{{ it.pinColor }};display:grid;place-items:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-2.8 0-5 2.2-5 5 0 3.5 5 10 5 10s5-6.5 5-10c0-2.8-2.2-5-5-5Z"></path><circle cx="12" cy="7" r="2"></circle></svg></button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ it.pickerOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="animation:popIn .18s ease both;position:absolute;top:-48px;{{ it.actionsSide }}:0;display:flex;gap:3px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:999px;padding:5px 9px;box-shadow:var(--shadow-md);z-index:6">
+                      <sc-for list="{{ it.emojis }}" as="e" hint-placeholder-count="6">
+                        <button type="button" class="wa-emoji" onClick="{{ e.onClick }}" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;padding:2px">{{ e.emoji }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}">
+              <div style="animation:popIn .2s ease both;align-self:flex-start;display:flex;align-items:center;gap:4px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:999px;padding:10px 15px;box-shadow:var(--shadow-sm)">
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--color-accent);animation:dot 1.1s ease-in-out infinite"></span>
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--color-accent);animation:dot 1.1s ease-in-out .15s infinite"></span>
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--color-accent);animation:dot 1.1s ease-in-out .3s infinite"></span>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;padding:8px 24px 0">
+            <sc-if value="{{ aiClosed }}" hint-placeholder-val="{{ true }}">
+              <button type="button" class="wa-pill" onClick="{{ openAi }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:var(--color-accent-100);border:1px solid var(--color-accent-300);border-radius:var(--radius-md);padding:9px 14px;cursor:pointer;color:var(--color-accent-800);font-size:13px">
+                <span style="font-family:var(--font-heading);color:var(--color-accent);font-size:15px;line-height:1">#</span>
+                Ask AI about this chat
+                <span style="flex:1"></span>
+                <span style="font:600 10px ui-monospace,monospace;border:1px solid var(--color-accent-300);border-radius:6px;padding:2px 5px">/</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ aiOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="animation:popIn .22s ease both;background:var(--color-accent-100);border:1px solid var(--color-accent-300);border-radius:var(--radius-md);padding:11px 14px">
+                <form onSubmit="{{ askAi }}" style="display:flex;align-items:center;gap:10px">
+                  <span style="font-family:var(--font-heading);color:var(--color-accent);font-size:15px;line-height:1">#</span>
+                  <input ref="{{ aiRef }}" value="{{ aiInput }}" onChange="{{ onAiInput }}" placeholder="summarize this thread · draft a friendly reply…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;font-size:13.5px;color:var(--color-accent-900)">
+                  <button type="submit" class="btn btn-primary" style="border-radius:999px;padding:6px 16px;font-size:12.5px">{{ aiButtonLabel }}</button>
+                  <button type="button" class="wa-ico" onClick="{{ closeAi }}" title="Close" style="width:28px;height:28px;border-radius:999px;border:none;background:transparent;color:var(--color-accent-700);display:grid;place-items:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg></button>
+                </form>
+                <sc-if value="{{ aiHasResult }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-accent-300)">
+                    <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:4px">Suggestion · draft only, never auto-sent</div>
+                    <div style="font-size:14px;line-height:1.55;color:var(--color-accent-900)">{{ aiStream }}<sc-if value="{{ aiBusy }}" hint-placeholder-val="{{ false }}"><span style="animation:caret 1s steps(1) infinite">▍</span></sc-if></div>
+                    <sc-if value="{{ aiDone }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:8px;margin-top:9px">
+                        <button type="button" class="btn btn-primary" onClick="{{ useAi }}" style="border-radius:999px;padding:6px 14px;font-size:12.5px">Put in composer ↵</button>
+                        <button type="button" class="btn btn-secondary" onClick="{{ askAi }}" style="border-radius:999px;padding:6px 14px;font-size:12.5px">Regenerate</button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ recording }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;display:flex;align-items:center;gap:12px;padding:16px 24px 18px">
+              <span style="width:10px;height:10px;border-radius:999px;background:var(--color-accent-600);animation:recPulse 1.2s ease-in-out infinite"></span>
+              <span style="font-variant-numeric:tabular-nums;font-size:14px;font-weight:600">{{ recTime }}</span>
+              <div style="flex:1;display:flex;align-items:center;gap:3px;height:26px">
+                <sc-for list="{{ wave }}" as="w" hint-placeholder-count="22"><span style="flex:1;border-radius:999px;background:var(--color-accent-300);height:{{ w.h }}"></span></sc-for>
+              </div>
+              <button type="button" class="btn btn-secondary" onClick="{{ cancelRec }}" style="border-radius:999px;padding:6px 14px;font-size:12.5px">Cancel</button>
+              <button type="button" class="wa-send" onClick="{{ stopRec }}" style="width:44px;height:44px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;border:none;cursor:pointer;box-shadow:var(--shadow-sm)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="3"></rect></svg></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ notRecording }}" hint-placeholder-val="{{ true }}">
+            <form onSubmit="{{ send }}" style="flex:none;position:relative;display:flex;align-items:center;gap:8px;padding:14px 24px 18px">
+              <button type="button" class="wa-ico" onClick="{{ toggleAttach }}" title="Attach" style="width:40px;height:40px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+              <button type="button" class="wa-ico" title="Emoji" style="width:40px;height:40px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14s1.5 2 3.5 2 3.5-2 3.5-2"></path><path d="M9 9h.01"></path><path d="M15 9h.01"></path></svg></button>
+              <input ref="{{ draftRef }}" value="{{ draft }}" onChange="{{ onDraft }}" placeholder="Type a message" style="flex:1;min-width:0;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:999px;padding:12px 18px;font-size:14px;color:var(--color-text);outline:none">
+              <button type="submit" class="wa-send" onClick="{{ sendOrRecord }}" title="{{ sendTitle }}" style="flex:none;width:44px;height:44px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;border:none;cursor:pointer;box-shadow:var(--shadow-sm)">
+                <sc-if value="{{ hasDraft }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7Z"></path></svg></sc-if>
+                <sc-if value="{{ noDraft }}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0"></path><path d="M12 17v4"></path><path d="M8 21h8"></path></svg></sc-if>
+              </button>
+              <sc-if value="{{ attachOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="animation:popIn .2s ease both;position:absolute;bottom:70px;left:24px;z-index:30;width:222px;background:var(--color-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:6px">
+                  <sc-for list="{{ attachItems }}" as="a" hint-placeholder-count="6">
+                    <button type="button" class="wa-menu-item" onClick="{{ a.onClick }}" style="width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;border-radius:10px;font-size:13px;color:var(--color-text);cursor:pointer;text-align:left">
+                      <span style="width:30px;height:30px;border-radius:999px;background:{{ a.bg }};color:{{ a.fg }};display:grid;place-items:center;flex:none;font-size:13px;font-weight:700">{{ a.glyph }}</span>{{ a.label }}
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </form>
+          </sc-if>
+        </div>
+      </sc-if>
+    </main>
+
+    <sc-if value="{{ infoOpen }}" hint-placeholder-val="{{ false }}">
+      <aside class="wa-scroll" style="animation:slideIn .28s cubic-bezier(.2,.9,.3,1) both;width:376px;flex:none;background:var(--color-neutral-100);border-left:1px solid var(--color-divider);overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--color-divider);position:sticky;top:0;background:var(--color-neutral-100);z-index:2">
+          <button type="button" class="wa-ico" onClick="{{ closeInfo }}" style="width:32px;height:32px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg></button>
+          <b style="font-size:14px">{{ active.infoLabel }}</b>
+        </div>
+        <div style="padding:24px 20px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div style="width:104px;height:104px;border-radius:999px;display:grid;place-items:center;font-family:var(--font-heading);font-size:40px;background:{{ active.color }};color:{{ active.ink }};box-shadow:var(--shadow-md)">{{ active.initials }}</div>
+            <div style="font-family:var(--font-heading);font-size:22px;text-align:center">{{ active.name }}</div>
+            <div style="font-size:12.5px;color:var(--color-neutral-700)">{{ active.subtitle }}</div>
+            <div style="display:flex;gap:8px;margin-top:4px"><span class="tag tag-accent" style="font-size:11px">{{ active.tag }}</span><span class="tag tag-outline" style="font-size:11px">Friends</span></div>
+          </div>
+          <sc-if value="{{ active.isGroup }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:5px">Description</div>
+                <div style="font-size:13.5px;line-height:1.55">Where the ramen plans happen. Keep it to lunch, please.</div>
+              </div>
+              <div>
+                <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:5px">Invite link</div>
+                <div style="display:flex;align-items:center;gap:10px;background:var(--color-bg);border-radius:999px;padding:8px 14px">
+                  <code style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">chat.whatsapp.com/DfK2…</code>
+                  <button type="button" class="wa-ico" title="Copy" style="width:28px;height:28px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="3"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                </div>
+                <button type="button" class="btn btn-ghost" style="font-size:12px;margin-top:6px;border-radius:999px">Regenerate link</button>
+              </div>
+              <div>
+                <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:8px">Admin only</div>
+                <sc-for list="{{ groupToggles }}" as="g" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:11px;padding:7px 0;font-size:13.5px">
+                    <button type="button" onClick="{{ g.onClick }}" style="width:40px;height:23px;border-radius:999px;border:none;cursor:pointer;padding:2px;display:flex;justify-content:{{ g.justify }};background:{{ g.track }};transition:background .2s ease">
+                      <span style="width:19px;height:19px;border-radius:999px;background:var(--color-bg);box-shadow:var(--shadow-sm);transition:transform .2s ease"></span>
+                    </button>
+                    {{ g.label }}
+                  </div>
+                </sc-for>
+              </div>
+              <div>
+                <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:8px">Participants · 5</div>
+                <sc-for list="{{ participants }}" as="p" hint-placeholder-count="5">
+                  <div class="wa-row" style="display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:var(--radius-md)">
+                    <div style="width:34px;height:34px;border-radius:999px;display:grid;place-items:center;font-family:var(--font-heading);font-size:13px;background:{{ p.color }};color:{{ p.ink }};flex:none">{{ p.initials }}</div>
+                    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">{{ p.name }}</div><div style="font-size:11px;color:var(--color-neutral-600)">{{ p.number }}</div></div>
+                    <sc-if value="{{ p.isAdmin }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent-2" style="font-size:10px">admin</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ active.isDirect }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div><div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:5px">Phone</div><div style="font-size:14px">{{ active.number }}</div></div>
+              <div><div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:5px">About</div><div style="font-size:13.5px;line-height:1.55">{{ active.about }}</div></div>
+              <div><div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:5px">Media in this chat</div>
+                <div style="display:flex;gap:8px">
+                  <div style="flex:1;aspect-ratio:1;border-radius:14px;background:var(--color-neutral-300)"></div>
+                  <div style="flex:1;aspect-ratio:1;border-radius:14px;background:var(--color-neutral-300)"></div>
+                  <div style="flex:1;aspect-ratio:1;border-radius:14px;background:var(--color-neutral-300)"></div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--color-divider);padding-top:16px">
+            <button type="button" class="wa-menu-item" style="display:flex;align-items:center;gap:11px;padding:10px;border:none;background:transparent;border-radius:12px;font-size:13.5px;color:var(--color-text);cursor:pointer;text-align:left"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"></rect><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path><path d="M10 13h4"></path></svg>Archive chat</button>
+            <button type="button" class="wa-menu-item" style="display:flex;align-items:center;gap:11px;padding:10px;border:none;background:transparent;border-radius:12px;font-size:13.5px;color:var(--color-accent-700);cursor:pointer;text-align:left"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6Z"></path><path d="M9 12l2 2 4-4"></path></svg>{{ active.blockLabel }}</button>
+          </div>
+        </div>
+      </aside>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSettings }}" style="animation:fadeIn .2s ease both;position:fixed;inset:0;z-index:40;background:color-mix(in srgb,#2e2b25 34%,transparent);display:grid;place-items:center;padding:40px">
+      <div onClick="{{ stop }}" style="animation:popIn .26s cubic-bezier(.2,.9,.3,1) both;width:520px;max-height:100%;overflow-y:auto;background:var(--color-bg);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:26px 28px">
+        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px">
+          <h3 style="margin:0;font-family:var(--font-heading);font-size:25px;flex:1">Settings</h3>
+          <button type="button" class="wa-ico" onClick="{{ closeSettings }}" style="width:32px;height:32px;border-radius:999px;border:none;background:transparent;color:var(--color-neutral-700);display:grid;place-items:center;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg></button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:1px solid var(--color-divider)">
+          <div style="width:62px;height:62px;border-radius:999px;background:var(--color-accent-2-500);color:var(--color-accent-2-900);display:grid;place-items:center;font-family:var(--font-heading);font-size:24px">Y</div>
+          <div style="flex:1"><div style="font-family:var(--font-heading);font-size:18px">You</div><div style="font-size:12.5px;color:var(--color-neutral-700)">+1 415 555 0100 · session linked</div></div>
+          <button type="button" class="btn btn-secondary" style="border-radius:999px;font-size:12.5px">Edit</button>
+        </div>
+        <div style="padding:18px 0;border-bottom:1px solid var(--color-divider)">
+          <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:10px">Anti-detection guard</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:7px 12px;font-size:13px">
+            <span>Per chat</span><b>3 / min · 20 / hour</b>
+            <span>Global</span><b>8 / min · 80 / hour</b>
+            <span>Jitter</span><b>0.8–2.4s, doubled in warm-up</b>
+            <span>Typing simulation</span><b style="color:var(--color-accent-2-700)">on, proportional to length</b>
+            <span>Circuit breaker</span><b style="color:var(--color-accent-2-700)">closed</b>
+          </div>
+          <p style="font-size:11.5px;color:var(--color-neutral-700);margin:12px 0 0;line-height:1.55">Env-tunable, but the defaults err slow on purpose — “too slow” is the safe failure mode.</p>
+        </div>
+        <div style="padding:18px 0 4px">
+          <div style="font:700 9.5px Figtree,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:10px">Client</div>
+          <sc-for list="{{ settingsToggles }}" as="s" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;font-size:13.5px">
+              <button type="button" onClick="{{ s.onClick }}" style="width:40px;height:23px;border-radius:999px;border:none;cursor:pointer;padding:2px;display:flex;justify-content:{{ s.justify }};background:{{ s.track }};transition:background .2s ease"><span style="width:19px;height:19px;border-radius:999px;background:var(--color-bg);box-shadow:var(--shadow-sm)"></span></button>
+              <span style="flex:1">{{ s.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;section&quot;:&quot;Layout&quot;},&quot;showGuardDot&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;simulateReplies&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+const AVATARS = {
+  accent: { color: "var(--color-accent-400)", ink: "var(--color-accent-900)" },
+  sage: { color: "var(--color-accent-2-400)", ink: "var(--color-accent-2-900)" },
+  sand: { color: "var(--color-neutral-300)", ink: "var(--color-neutral-800)" },
+  sageLight: { color: "var(--color-accent-2-300)", ink: "var(--color-accent-2-900)" },
+  accentLight: { color: "var(--color-accent-200)", ink: "var(--color-accent-800)" },
+};
+const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const AI_ANSWERS = {
+  sam: "Friday 7pm is confirmed. Sam still needs the address — send it and the plan is settled.",
+  alex: "Alex found a rooftop place with 4 beds and sent the listing. They're waiting on your verdict.",
+  team: "Lunch is tomorrow, ramen, 12:30 — Priya shared the menu and Marco is in. Nobody has booked yet.",
+  jordan: "You promised Jordan the trail map after they asked where the summit photo was taken.",
+  book: "Book club starts 'Piranesi' Monday. Tariq left a 34s voice note; you're on chapter 3 and want no spoilers.",
+};
+const WAVE = [9, 15, 22, 12, 26, 18, 10, 21, 14, 24, 11, 17, 25, 13, 20, 9, 16, 23, 12, 19, 10, 14];
+
+function chat(id, name, initials, av, time, preview, extra) {
+  return Object.assign({ id, name, initials, av, time, preview }, extra || {});
+}
+
+const CHATS = [
+  chat("sam", "Sam — trip planning", "S", "accent", "09:41", "No rush, whenever you get a sec", {
+    pinned: true, unread: 0, presence: "online", tag: "Trip planning",
+    number: "+1 415 555 0142", about: "Making plans, mostly keeping them.",
+  }),
+  chat("alex", "Alex", "A", "sage", "09:43", "Let me know what you think!", {
+    unread: 2, presence: "online", tag: "Friends",
+    number: "+1 415 555 0198", about: "Sends listings at 2am.",
+  }),
+  chat("team", "Team lunch 🍜", "TL", "sand", "09:11", "Marco: That place looks great, 12:30?", {
+    isGroup: true, presence: "Priya, Marco, +3 others", tag: "Work",
+  }),
+  chat("jordan", "Jordan", "J", "sageLight", "09:31", "Sending you the trail map now", {
+    fromMe: true, status: "delivered", presence: "last seen today at 09:14", tag: "Friends",
+    number: "+1 415 555 0110", about: "Up a mountain, back Sunday.",
+  }),
+  chat("book", "Book club 📚", "BC", "accentLight", "07:46", "You: no spoilers please 😅", {
+    isGroup: true, fromMe: true, status: "sent", presence: "Noor, Tariq, +6 others", tag: "Reading",
+  }),
+];
+
+const MESSAGES = {
+  sam: [
+    { id: "s1", day: "Tuesday, 28 July", time: "09:12", body: "Hey! Are we still on for Friday?" },
+    { id: "s2", day: "Tuesday, 28 July", time: "09:13", mine: true, status: "read", body: "Yep, 7pm works for me." },
+    { id: "s3", day: "Tuesday, 28 July", time: "09:14", body: "Perfect, see you then 🙂", reaction: "👍" },
+    { id: "s4", day: "Today", time: "09:36", body: "Also — could you send the address again?" },
+    { id: "s5", day: "Today", time: "09:41", body: "No rush, whenever you get a sec" },
+  ],
+  alex: [
+    { id: "a1", day: "Today", time: "08:44", body: "Found a place for the trip, sending the link" },
+    { id: "a2", day: "Today", time: "08:52", type: "image", body: "Rooftop with a view, 4 beds" },
+    { id: "a3", day: "Today", time: "09:26", body: "https://example.com/listing/123" },
+    { id: "a4", day: "Today", time: "09:43", body: "Let me know what you think!" },
+  ],
+  team: [
+    { id: "t1", day: "Yesterday", time: "12:20", sender: "Priya", body: "Who's in for lunch tomorrow?" },
+    { id: "t2", day: "Yesterday", time: "12:21", sender: "Marco", body: "I'm in!" },
+    { id: "t3", day: "Yesterday", time: "12:22", mine: true, status: "read", body: "Count me in too" },
+    { id: "t4", day: "Today", time: "09:06", sender: "Priya", type: "file", mediaName: "menu-ramen-place.pdf", mediaMeta: "PDF · 1.2 MB" },
+    { id: "t5", day: "Today", time: "09:08", sender: "Priya", type: "poll", body: "What time works?",
+      pollOptions: [{ name: "12:00", votes: 1, pct: "22%" }, { name: "12:30", votes: 3, pct: "66%" }, { name: "13:00", votes: 1, pct: "22%" }] },
+    { id: "t6", day: "Today", time: "09:11", sender: "Marco", body: "That place looks great, 12:30?", starred: true },
+  ],
+  jordan: [
+    { id: "j1", day: "Sunday, 26 July", time: "17:02", mine: true, status: "read", body: "Here's the photo from the hike" },
+    { id: "j2", day: "Sunday, 26 July", time: "17:03", mine: true, status: "read", type: "image", body: "Summit view, worth the climb" },
+    { id: "j3", day: "Today", time: "03:41", body: "That view is incredible, where was this?" },
+    { id: "j4", day: "Today", time: "09:31", mine: true, status: "delivered", body: "Sending you the trail map now" },
+  ],
+  book: [
+    { id: "b1", day: "Friday, 24 July", time: "19:15", sender: "Noor", body: "Starting the next book Monday — 'Piranesi'", pinned: true },
+    { id: "b2", day: "Today", time: "01:12", sender: "Tariq", type: "voice", mediaMeta: "0:34" },
+    { id: "b3", day: "Today", time: "07:46", mine: true, status: "sent", body: "Just finished chapter 3, no spoilers please 😅" },
+  ],
+};
+
+const PARTICIPANTS = [
+  { name: "You", number: "+1 415 555 0100", initials: "Y", av: "sage", isAdmin: true },
+  { name: "Priya", number: "+1 555 123 0001", initials: "P", av: "accent", isAdmin: true },
+  { name: "Marco", number: "+1 555 123 0002", initials: "M", av: "sand" },
+  { name: "Noor", number: "+1 555 123 0003", initials: "N", av: "sageLight" },
+  { name: "Tariq", number: "+1 555 123 0004", initials: "T", av: "accentLight" },
+];
+
+const ATTACH = [
+  { label: "Photos & videos", glyph: "▣", tone: "accent" },
+  { label: "Document", glyph: "▤", tone: "sage" },
+  { label: "Location", glyph: "◉", tone: "accent" },
+  { label: "Poll", glyph: "▥", tone: "sage" },
+  { label: "Contact", glyph: "☺", tone: "accent" },
+  { label: "Buttons or list", glyph: "☰", tone: "sage" },
+];
+
+class Component extends DCLogic {
+  state = {
+    chats: CHATS.map((c) => ({ ...c })),
+    msgs: JSON.parse(JSON.stringify(MESSAGES)),
+    selected: "sam",
+    query: "",
+    filter: "all",
+    draft: "",
+    typing: false,
+    hover: null,
+    picker: null,
+    menu: null,
+    info: false,
+    settings: false,
+    aiOpen: false,
+    aiInput: "",
+    aiStream: "",
+    aiBusy: false,
+    aiDone: false,
+    recording: false,
+    recSec: 0,
+    groupToggles: [false, false],
+    clientToggles: [true, true, false],
+    animated: {},
+  };
+
+  searchRef = React.createRef();
+  aiRef = React.createRef();
+  draftRef = React.createRef();
+  threadRef = React.createRef();
+
+  componentDidMount() {
+    this.onKey = (e) => {
+      if (e.key === "Escape") {
+        this.setState({ menu: null, info: false, settings: false, picker: null, aiOpen: false });
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        this.searchRef.current && this.searchRef.current.focus();
+      } else if (e.key === "/" && document.activeElement === document.body) {
+        e.preventDefault();
+        this.openAi();
+      }
+    };
+    document.addEventListener("keydown", this.onKey);
+    this.scrollBottom();
+    if (window.MutationObserver) {
+      this.mo = new MutationObserver(() => {
+        const el = this.threadRef.current;
+        if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 280) this.scrollBottom();
+      });
+      this.observeThread();
+    }
+  }
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this.onKey);
+    clearInterval(this.aiTimer);
+    clearInterval(this.recTimer);
+    clearTimeout(this.replyTimer);
+    clearTimeout(this.scrollTimer);
+    clearTimeout(this.scrollTimer2);
+    if (this.mo) this.mo.disconnect();
+  }
+  observeThread() {
+    const el = this.threadRef.current;
+    if (!el || !this.mo) return;
+    this.mo.disconnect();
+    this.mo.observe(el, { childList: true, subtree: true, characterData: true });
+  }
+  scrollBottom() {
+    const pin = () => {
+      const el = this.threadRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    pin();
+    requestAnimationFrame(() => { pin(); requestAnimationFrame(pin); });
+    clearTimeout(this.scrollTimer);
+    this.scrollTimer = setTimeout(pin, 380);
+    this.scrollTimer2 = setTimeout(pin, 700);
+  }
+
+  select = (id) => {
+    this.setState((s) => ({
+      selected: id, menu: null, info: false, picker: null, hover: null,
+      aiOpen: false, aiStream: "", aiDone: false, draft: "",
+      chats: s.chats.map((c) => (c.id === id ? { ...c, unread: 0 } : c)),
+    }), () => { this.observeThread(); this.scrollBottom(); });
+  };
+
+  send = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const text = this.state.draft.trim();
+    if (!text) return;
+    const id = "m" + Date.now();
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    this.setState((s) => {
+      const list = (s.msgs[s.selected] || []).concat([{ id, day: "Today", time, mine: true, status: "sent", body: text }]);
+      return {
+        draft: "",
+        msgs: { ...s.msgs, [s.selected]: list },
+        animated: { ...s.animated, [id]: true },
+        chats: s.chats.map((c) => (c.id === s.selected ? { ...c, preview: "You: " + text, time, fromMe: true, status: "sent" } : c)),
+      };
+    }, () => this.scrollBottom());
+    if ((this.props.simulateReplies ?? true) === false) return;
+    clearTimeout(this.replyTimer);
+    this.replyTimer = setTimeout(() => {
+      this.setState({ typing: true }, () => this.scrollBottom());
+      this.replyTimer = setTimeout(() => {
+        const rid = "r" + Date.now();
+        const rtime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        this.setState((s) => {
+          const chat = s.chats.find((c) => c.id === s.selected) || {};
+          const body = chat.isGroup ? "Works for me 👍" : "Got it — thanks!";
+          const list = (s.msgs[s.selected] || []).concat([{ id: rid, day: "Today", time: rtime, sender: chat.isGroup ? "Marco" : undefined, body }]);
+          return {
+            typing: false,
+            msgs: { ...s.msgs, [s.selected]: list },
+            animated: { ...s.animated, [rid]: true },
+            chats: s.chats.map((c) => (c.id === s.selected ? { ...c, preview: body, time: rtime, fromMe: false } : c)),
+          };
+        }, () => this.scrollBottom());
+      }, 1600);
+    }, 900);
+  };
+
+  askAi = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const answer = AI_ANSWERS[this.state.selected] || AI_ANSWERS.sam;
+    clearInterval(this.aiTimer);
+    this.setState({ aiBusy: true, aiDone: false, aiStream: "" });
+    let i = 0;
+    this.aiTimer = setInterval(() => {
+      i += 2;
+      if (i >= answer.length) {
+        clearInterval(this.aiTimer);
+        this.setState({ aiStream: answer, aiBusy: false, aiDone: true });
+      } else {
+        this.setState({ aiStream: answer.slice(0, i) });
+      }
+    }, 24);
+  };
+
+  openAi = () => {
+    this.setState({ aiOpen: true, menu: null });
+    setTimeout(() => this.aiRef.current && this.aiRef.current.focus(), 40);
+  };
+  closeAi = () => this.setState({ aiOpen: false, aiStream: "", aiDone: false, aiInput: "" });
+  useAi = () => {
+    this.setState((s) => ({ draft: s.aiStream, aiOpen: false, aiStream: "", aiDone: false, aiInput: "" }));
+    setTimeout(() => this.draftRef.current && this.draftRef.current.focus(), 40);
+  };
+
+  startRec = () => {
+    this.setState({ recording: true, recSec: 0 });
+    clearInterval(this.recTimer);
+    this.recTimer = setInterval(() => this.setState((s) => ({ recSec: s.recSec + 1 })), 1000);
+  };
+  stopRec = () => { clearInterval(this.recTimer); this.setState({ recording: false }); };
+
+  toggleMenu = (which) => this.setState((s) => ({ menu: s.menu === which ? null : which, picker: null }));
+
+  renderVals() {
+    const s = this.state;
+    const q = s.query.trim().toLowerCase();
+    const visible = s.chats
+      .filter((c) => (q ? c.name.toLowerCase().includes(q) : true))
+      .filter((c) => (s.filter === "unread" ? (c.unread || 0) > 0 : s.filter === "groups" ? !!c.isGroup : s.filter === "archived" ? false : true))
+      .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
+
+    const active = s.chats.find((c) => c.id === s.selected) || null;
+    const list = active ? s.msgs[active.id] || [] : [];
+
+    const items = [];
+    let lastDay = null;
+    let lastSender = null;
+    list.forEach((m) => {
+      if (m.day !== lastDay) {
+        items.push({ isDate: true, isMsg: false, label: m.day, id: "d-" + m.day });
+        lastDay = m.day;
+        lastSender = null;
+      }
+      const mine = !!m.mine;
+      const type = m.type || "text";
+      const senderKey = mine ? "me" : m.sender || "them";
+      const showSender = !mine && !!m.sender && senderKey !== lastSender;
+      lastSender = senderKey;
+      items.push({
+        isMsg: true, isDate: false, id: m.id,
+        anim: s.animated[m.id] ? "wa-in" : "",
+        align: mine ? "flex-end" : "flex-start",
+        bg: mine ? "var(--color-accent-600)" : "var(--color-neutral-100)",
+        fg: mine ? "var(--color-neutral-100)" : "var(--color-text)",
+        border: mine ? "transparent" : "var(--color-divider)",
+        radius: mine ? "16px 16px 6px 16px" : "16px 16px 16px 6px",
+        metaColor: mine ? "color-mix(in srgb,var(--color-neutral-100) 78%,transparent)" : "var(--color-neutral-600)",
+        tickColor: m.status === "read" ? "var(--color-accent-2-300)" : "color-mix(in srgb,var(--color-neutral-100) 78%,transparent)",
+        showTicks: mine,
+        senderColor: "var(--color-accent-700)",
+        showSender, sender: m.sender || "",
+        time: m.time, body: m.body || "",
+        isText: type === "text", isImage: type === "image", isFile: type === "file",
+        isVoice: type === "voice", isPoll: type === "poll",
+        mediaName: m.mediaName || "", mediaMeta: m.mediaMeta || "",
+        pollOptions: m.pollOptions || [],
+        reaction: m.reaction || "", starred: !!m.starred, pinned: !!m.pinned,
+        hovered: s.hover === m.id, pickerOpen: s.picker === m.id,
+        actionsSide: mine ? "right" : "left",
+        starColor: m.starred ? "var(--color-accent)" : "var(--color-neutral-700)",
+        pinColor: m.pinned ? "var(--color-accent)" : "var(--color-neutral-700)",
+        onEnter: () => this.setState({ hover: m.id }),
+        onLeave: () => this.setState((st) => ({ hover: st.picker === m.id ? st.hover : null })),
+        onPicker: () => this.setState((st) => ({ picker: st.picker === m.id ? null : m.id })),
+        onStar: () => this.mutate(m.id, (x) => ({ ...x, starred: !x.starred })),
+        onPin: () => this.mutate(m.id, (x) => ({ ...x, pinned: !x.pinned })),
+        emojis: EMOJIS.map((emoji) => ({
+          emoji,
+          onClick: () => { this.mutate(m.id, (x) => ({ ...x, reaction: x.reaction === emoji ? "" : emoji })); this.setState({ picker: null }); },
+        })),
+      });
+    });
+
+    const FILTERS = [
+      { key: "all", label: "All" },
+      { key: "unread", label: "Unread " + s.chats.reduce((n, c) => n + ((c.unread || 0) > 0 ? 1 : 0), 0) },
+      { key: "groups", label: "Groups" },
+      { key: "archived", label: "Archived" },
+    ];
+
+    const toggle = (arr, i, key) => () =>
+      this.setState((st) => ({ [key]: st[key].map((v, j) => (j === i ? !v : v)) }));
+
+    const compact = (this.props.density ?? "comfortable") === "compact";
+
+    return {
+      guardDot: this.props.showGuardDot ?? true,
+      query: s.query,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      searchRef: this.searchRef, aiRef: this.aiRef, draftRef: this.draftRef, threadRef: this.threadRef,
+      filters: FILTERS.map((f) => ({
+        label: f.label,
+        bg: s.filter === f.key ? "var(--color-accent)" : "transparent",
+        color: s.filter === f.key ? "var(--color-bg)" : "var(--color-neutral-700)",
+        border: s.filter === f.key ? "var(--color-accent)" : "var(--color-divider)",
+        onClick: () => this.setState({ filter: f.key }),
+      })),
+      visibleChats: visible.map((c) => ({
+        name: c.name, initials: c.initials, preview: c.preview, time: c.time,
+        initialsSize: compact ? (c.initials.length > 1 ? "13px" : "15px") : (c.initials.length > 1 ? "16px" : "18px"),
+        pad: compact ? "7px 12px" : "11px 12px",
+        size: compact ? "36px" : "46px",
+        color: AVATARS[c.av].color, ink: AVATARS[c.av].ink,
+        bg: c.id === s.selected ? "var(--color-surface)" : "transparent",
+        timeColor: (c.unread || 0) > 0 ? "var(--color-accent-700)" : "var(--color-neutral-600)",
+        timeWeight: (c.unread || 0) > 0 ? "700" : "400",
+        unread: (c.unread || 0) > 0 ? c.unread : 0,
+        showPin: !!c.pinned && !(c.unread > 0),
+        showTicks: !!c.fromMe,
+        tickColor: c.status === "read" ? "var(--color-accent-2-600)" : "var(--color-neutral-600)",
+        onSelect: () => this.select(c.id),
+      })),
+      noChats: visible.length === 0,
+      noSelection: !active,
+      hasSelection: !!active,
+      active: active ? {
+        name: active.name, initials: active.initials, presence: active.presence, tag: active.tag,
+        initialsSize: active.initials.length > 1 ? "17px" : "19px",
+        color: AVATARS[active.av].color, ink: AVATARS[active.av].ink,
+        isGroup: !!active.isGroup, isDirect: !active.isGroup,
+        infoLabel: active.isGroup ? "Group info" : "Contact info",
+        blockLabel: active.isGroup ? "Leave group" : "Block contact",
+        subtitle: active.isGroup ? active.presence : active.number,
+        number: active.number || "", about: active.about || "",
+      } : null,
+      historyNotice: list.length + " messages loaded from this session",
+      items,
+      wave: WAVE.map((h) => ({ h: h + "px", color: "var(--color-accent-300)" })),
+      typing: s.typing,
+      draft: s.draft, hasDraft: s.draft.trim().length > 0, noDraft: s.draft.trim().length === 0,
+      sendTitle: s.draft.trim() ? "Send" : "Record a voice message",
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      send: this.send,
+      sendOrRecord: () => { if (!s.draft.trim()) this.startRec(); },
+      recording: s.recording, notRecording: !s.recording,
+      recTime: "0:" + String(s.recSec % 60).padStart(2, "0"),
+      cancelRec: this.stopRec, stopRec: this.stopRec,
+      aiOpen: s.aiOpen, aiClosed: !s.aiOpen, aiInput: s.aiInput,
+      onAiInput: (e) => this.setState({ aiInput: e.target.value }),
+      aiButtonLabel: s.aiBusy ? "Thinking…" : "Ask",
+      aiStream: s.aiStream, aiBusy: s.aiBusy, aiDone: s.aiDone,
+      aiHasResult: s.aiBusy || s.aiDone,
+      askAi: this.askAi, openAi: this.openAi, closeAi: this.closeAi, useAi: this.useAi,
+      attachOpen: s.menu === "attach",
+      attachItems: ATTACH.map((a) => ({
+        label: a.label, glyph: a.glyph,
+        bg: a.tone === "accent" ? "var(--color-accent-200)" : "var(--color-accent-2-200)",
+        fg: a.tone === "accent" ? "var(--color-accent-800)" : "var(--color-accent-2-800)",
+        onClick: () => this.setState({ menu: null }),
+      })),
+      toggleAttach: () => this.toggleMenu("attach"),
+      headerMenuOpen: s.menu === "header",
+      toggleHeaderMenu: () => this.toggleMenu("header"),
+      newMenuOpen: s.menu === "new",
+      toggleNewMenu: () => this.toggleMenu("new"),
+      guardOpen: s.menu === "guard",
+      toggleGuard: () => this.toggleMenu("guard"),
+      closeMenus: () => this.setState({ menu: null }),
+      infoOpen: s.info && !!active,
+      openInfo: () => this.setState({ info: true, menu: null }),
+      closeInfo: () => this.setState({ info: false }),
+      settingsOpen: s.settings,
+      openSettings: () => this.setState({ settings: true, menu: null }),
+      closeSettings: () => this.setState({ settings: false }),
+      stop: (e) => e.stopPropagation(),
+      participants: PARTICIPANTS.map((p) => ({
+        name: p.name, number: p.number, initials: p.initials, isAdmin: !!p.isAdmin,
+        color: AVATARS[p.av].color, ink: AVATARS[p.av].ink,
+      })),
+      groupToggles: ["Only admins can edit group info", "Only admins can send messages"].map((label, i) => ({
+        label,
+        justify: s.groupToggles[i] ? "flex-end" : "flex-start",
+        track: s.groupToggles[i] ? "var(--color-accent)" : "var(--color-neutral-400)",
+        onClick: toggle(s.groupToggles, i, "groupToggles"),
+      })),
+      settingsToggles: ["Show read receipts", "Keyboard shortcut hints", "Compact chat list"].map((label, i) => ({
+        label,
+        justify: s.clientToggles[i] ? "flex-end" : "flex-start",
+        track: s.clientToggles[i] ? "var(--color-accent)" : "var(--color-neutral-400)",
+        onClick: toggle(s.clientToggles, i, "clientToggles"),
+      })),
+    };
+  }
+
+  mutate(id, fn) {
+    this.setState((s) => ({
+      msgs: { ...s.msgs, [s.selected]: (s.msgs[s.selected] || []).map((m) => (m.id === id ? fn(m) : m)) },
+    }));
+  }
+}
+</script>
+</body>
+</html>
