@@ -4,6 +4,11 @@
 
 FROM node:22-alpine AS build
 WORKDIR /app
+# Vite inlines VITE_-prefixed env vars into the built bundle at build time (see
+# frontend/src/api.ts DEMO_MODE) — pass VITE_DEMO_MODE=false as a build-arg for a real,
+# non-demo deployment. Defaults to true so the plain `docker build` still produces the demo.
+ARG VITE_DEMO_MODE=true
+ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
 COPY package.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
