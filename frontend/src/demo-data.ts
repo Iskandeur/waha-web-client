@@ -16,6 +16,7 @@ import type {
   NumberStatus,
   OutgoingFile,
   Profile,
+  SearchHit,
 } from "./api.js";
 import { messagePreview } from "./format.js";
 
@@ -72,6 +73,19 @@ const RAW_MESSAGES: Record<string, RawMessage[]> = {
     { timestamp: ago(2 * HOUR), fromMe: true, type: "text", body: "Just finished chapter 3, no spoilers please 😅", status: "sent" },
   ],
 };
+
+/** Length-preserving fold (one folded character per original character), so a match offset in
+ *  the folded string is also a valid offset in the original — the backend's matcher keeps an
+ *  explicit index map instead, which is more correct but more machinery than a mock needs. */
+function demoFold(text: string): string {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const folded = ch.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+    out += folded[0] ?? ch;
+  }
+  return out;
+}
 
 export const DEMO_MESSAGES: Record<string, Message[]> = {};
 for (const [chatId, msgs] of Object.entries(RAW_MESSAGES)) {
@@ -848,4 +862,53 @@ export const demoApi = {
       warmupEndsAt: 0,
       circuitBreaker: { open: false, openUntil: null, recentFailures: 0 },
     }),
+
+  /** Mirrors the real search closely enough to be worth trying in the demo (same folding,
+   *  same AND-ed terms, same snippet+highlight shape) but it is NOT the implementation: the
+   *  real one — bounded index, TTL, WAHA paging — lives in
+   *  `backend/src/search/message-index.ts` and is what the tests cover. Kept small and local
+   *  here rather than shared, because the two run in different places for different reasons. */
+  searchMessages: (query: string, opts: { chatId?: string; limit?: number } = {}) => {
+    const terms = query
+      .split(/\s+/)
+      .map((t) => demoFold(t.replace(/"/g, "")))
+      .filter(Boolean);
+    const results: SearchHit[] = [];
+    for (const chat of DEMO_CHATS) {
+      if (opts.chatId && chat.id !== opts.chatId) continue;
+      for (const message of DEMO_MESSAGES[chat.id] ?? []) {
+        if (!message.body) continue;
+        const folded = demoFold(message.body);
+        if (!terms.every((t) => folded.includes(t))) continue;
+        const at = folded.indexOf(terms[0]);
+        results.push({
+          chatId: chat.id,
+          chatName: chat.name,
+          messageId: message.id,
+          timestamp: message.timestamp,
+          fromMe: message.fromMe,
+          snippet: message.body,
+          highlights: [{ start: at, length: terms[0].length }],
+        });
+      }
+    }
+    results.sort((a, b) => b.timestamp - a.timestamp);
+    const limited = results.slice(0, opts.limit ?? 60);
+    return delay({
+      query,
+      terms,
+      results: limited,
+      stats: {
+        chats: DEMO_CHATS.length,
+        messages: Object.values(DEMO_MESSAGES).reduce((n, m) => n + m.length, 0),
+        builtAt: Date.now(),
+        buildMs: 0,
+        partial: false,
+        skippedChats: 0,
+        searchMs: 1,
+        matches: results.length,
+        building: false,
+      },
+    });
+  },
 };

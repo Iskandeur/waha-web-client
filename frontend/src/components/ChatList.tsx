@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { api, type Chat, type Contact } from "../api.js";
+import { api, type Chat, type Contact, type SearchHit, type SearchStats } from "../api.js";
+import { chatNameMatches } from "../chat-name-search.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
 import { GuardIndicator } from "./GuardIndicator.js";
 import { JoinGroupModal } from "./JoinGroupModal.js";
 import { LabelFilter } from "./LabelFilter.js";
+import { MessageSearchResults } from "./MessageSearchResults.js";
 import { NewGroupFlow } from "./NewGroupFlow.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { StatusTicks } from "./StatusTicks.js";
@@ -15,6 +17,12 @@ type Filter = "all" | "unread" | "groups" | "archived";
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
 const SEARCH_KBD_LABEL = IS_MAC ? "⌘K" : "Ctrl K";
+
+/** Chat names filter locally as you type; message search costs a backend round trip (and, the
+ *  first time, a walk through WAHA history), so it waits for a pause in typing. */
+const SEARCH_DEBOUNCE_MS = 350;
+/** Matches the backend's own minimum — one character matches most of any history. */
+const MIN_SEARCH_LENGTH = 2;
 
 /** A query is "phone-shaped" once it has enough digits to plausibly be a number rather than a
  *  name search — lets the empty-results state offer "start a chat with +1 555…" without
@@ -94,6 +102,7 @@ export function ChatList({
   onStartNewChat,
   onStartNewChatFromContact,
   onGroupCreatedOrJoined,
+  onSelectSearchHit,
 }: {
   chats: Chat[];
   selectedId: string | null;
@@ -102,6 +111,7 @@ export function ChatList({
   onStartNewChat: (phone: string) => Promise<void>;
   onStartNewChatFromContact: (contact: Contact) => void;
   onGroupCreatedOrJoined: (groupId: string, name?: string) => void;
+  onSelectSearchHit: (hit: SearchHit) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -113,6 +123,10 @@ export function ChatList({
   const [labelFilterId, setLabelFilterId] = useState<string | null>(null);
   const [labelFilterChatIds, setLabelFilterChatIds] = useState<string[] | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [searchStats, setSearchStats] = useState<SearchStats | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const archivedCount = useMemo(() => chats.filter((c) => c.isArchived).length, [chats]);
 
@@ -140,11 +154,55 @@ export function ChatList({
       .catch(() => setLabelFilterChatIds([]));
   }, [labelFilterId]);
 
+  // Debounced message search. The backend builds its bounded WAHA index progressively: a 202
+  // response carries the results indexed so far, so poll the shared build until `building`
+  // clears. `cancelled` prevents an old query's poll from overwriting a newer one.
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < MIN_SEARCH_LENGTH) {
+      setHits([]);
+      setSearchStats(null);
+      setSearchError(null);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
+    setSearching(true);
+    async function runSearch() {
+      try {
+        const res = await api.searchMessages(trimmed);
+        if (cancelled) return;
+        setHits(res.results);
+        setSearchStats(res.stats);
+        setSearchError(null);
+        if (res.stats.building) {
+          pollTimer = setTimeout(runSearch, 1500);
+          return;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setHits([]);
+        setSearchStats(null);
+        setSearchError(err instanceof Error ? err.message : String(err));
+      }
+      if (!cancelled) setSearching(false);
+    }
+    const timer = setTimeout(runSearch, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [query]);
+
+  const searchActive = query.trim().length >= MIN_SEARCH_LENGTH;
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return chats
       .filter((c) => (filter === "archived" ? c.isArchived : !c.isArchived))
-      .filter((c) => (q ? c.name.toLowerCase().includes(q) : true))
+      .filter((c) => chatNameMatches(c.name, q))
       .filter((c) => (labelFilterId ? (labelFilterChatIds ?? []).includes(c.id) : true))
       .filter((c) => {
         if (filter === "unread") return (c.unreadCount ?? 0) > 0;
@@ -288,6 +346,8 @@ export function ChatList({
         ))}
         <LabelFilter activeLabelId={labelFilterId} onSelect={setLabelFilterId} />
       </div>
+      <div className="sidebar-scroll">
+      {searchActive && <div className="search-results-header">Chats</div>}
       <ul className="chat-list">
         {visible.map((chat) => (
           <ChatListItem
@@ -312,6 +372,17 @@ export function ChatList({
           </li>
         )}
       </ul>
+      {searchActive && (
+        <MessageSearchResults
+          query={query.trim()}
+          results={hits}
+          stats={searchStats}
+          loading={searching}
+          error={searchError}
+          onSelect={onSelectSearchHit}
+        />
+      )}
+      </div>
       <div className="sidebar-hints">
         <span>
           <kbd>{SEARCH_KBD_LABEL}</kbd> search

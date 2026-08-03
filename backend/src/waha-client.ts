@@ -145,6 +145,14 @@ interface WahaCallMeta {
   chatId?: string;
 }
 
+/** A caller-owned abort is a local budget decision, not evidence that WAHA is down.
+ *  In particular, the history indexer deliberately cancels slow reads; counting those
+ *  cancellations would let a best-effort search disable every read and send for the
+ *  circuit breaker's full cooldown. Network errors and HTTP failures still count. */
+export function countsTowardCircuitBreaker(signal?: AbortSignal | null): boolean {
+  return !signal?.aborted;
+}
+
 /** The ONLY function in this codebase that performs an HTTP call against WAHA. Every entry in
  *  `waha` below funnels through here, and every call — reads included — passes the circuit
  *  breaker check and gets logged, which is what makes "no WAHA request bypasses the guard"
@@ -191,7 +199,9 @@ async function wahaFetch<T>(path: string, init: RequestInit, meta: WahaCallMeta)
   try {
     res = await fetch(url, { ...init, headers });
   } catch (err) {
-    circuitBreaker.recordFailure(now);
+    if (countsTowardCircuitBreaker(init.signal)) {
+      circuitBreaker.recordFailure(now);
+    }
     throw err;
   }
 
@@ -328,10 +338,16 @@ export const waha = {
   /** `offset` backs "load older messages": WAHA's own `GET .../messages` query accepts
    *  `limit`/`offset` (no cursor/token — a plain page-through-the-store pair), so passing a
    *  growing offset walks further back into history a page at a time. */
-  getMessages: (chatId: string, session = config.wahaSession, limit = 100, offset = 0) =>
+  getMessages: (
+    chatId: string,
+    session = config.wahaSession,
+    limit = 100,
+    offset = 0,
+    signal?: AbortSignal,
+  ) =>
     wahaFetch<WahaMessage[]>(
       `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}&offset=${offset}`,
-      {},
+      { signal },
       { kind: "read", session, chatId },
     ),
 
