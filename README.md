@@ -132,7 +132,8 @@ first search and reuses it for 5 minutes. The build is **progressive**: the API 
 with the messages indexed so far, and the UI polls that one shared build until it is complete,
 so a deliberately paced WAHA walk never becomes a reverse-proxy timeout:
 
-- the 25 most recent chats, 2 pages of history each (≤ 50 WAHA calls, spaced ~120 ms apart),
+- the 25 most recent chats, 100 messages each (≤ 25 WAHA calls, spaced ~120 ms apart); each
+  read is aborted after 10 seconds so one unhealthy chat cannot freeze the whole index,
 - concurrent searches share one build; a chat whose fetch fails is skipped rather than failing
   the whole search — but if *every* chat fails, the error surfaces instead of an empty result
   that would read as "no matches",

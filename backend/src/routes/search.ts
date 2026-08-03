@@ -5,6 +5,9 @@ import { createMessageIndex, type MessageIndex } from "../search/message-index.j
 /** Two characters is the shortest query worth walking an index for — one letter matches most
  *  of any history and would just be a slow way to render noise. */
 export const MIN_QUERY_LENGTH = 2;
+/** One unhealthy chat must not stall the progressive index indefinitely. This aborts the actual
+ *  WAHA fetch (rather than merely racing it and leaving a hidden request running). */
+export const SEARCH_READ_TIMEOUT_MS = 10_000;
 
 export function isValidSearchQuery(query: unknown): query is string {
   return typeof query === "string" && query.trim().length >= MIN_QUERY_LENGTH;
@@ -14,7 +17,14 @@ export function isValidSearchQuery(query: unknown): query is string {
  *  search/message-index.ts for why it isn't rebuilt per call). */
 const defaultIndex: MessageIndex = createMessageIndex({
   listChats: () => waha.chatsOverview(),
-  getMessages: (chatId, limit, offset) => waha.getMessages(chatId, undefined, limit, offset),
+  getMessages: (chatId, limit, offset) =>
+    waha.getMessages(
+      chatId,
+      undefined,
+      limit,
+      offset,
+      AbortSignal.timeout(SEARCH_READ_TIMEOUT_MS),
+    ),
 });
 
 export function searchRoutes(index: MessageIndex = defaultIndex) {

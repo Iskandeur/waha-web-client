@@ -8,8 +8,8 @@
  *  as everything else (see waha-client.ts), and a burst of a hundred parallel reads is exactly
  *  the kind of traffic the anti-detection guard exists to avoid.
  *
- *  The index is deliberately bounded (`DEFAULT_OPTIONS`): the N most recent chats, a couple of
- *  pages of history each. Search results say so (`stats.partial`) instead of pretending the
+ *  The index is deliberately bounded (`DEFAULT_OPTIONS`): the N most recent chats and one page
+ *  of history each. Search results say so (`stats.partial`) instead of pretending the
  *  whole archive was searched — WhatsApp multi-device sessions don't even hold the full history
  *  locally, so "we searched everything" would be a lie no matter how hard we paged. */
 
@@ -83,7 +83,7 @@ export interface IndexOptions {
 
 export const DEFAULT_OPTIONS: IndexOptions = {
   maxChats: 25,
-  pagesPerChat: 2,
+  pagesPerChat: 1,
   pageSize: 100,
   ttlMs: 5 * 60 * 1000,
   pauseMs: 120,

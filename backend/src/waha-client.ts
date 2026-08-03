@@ -328,10 +328,16 @@ export const waha = {
   /** `offset` backs "load older messages": WAHA's own `GET .../messages` query accepts
    *  `limit`/`offset` (no cursor/token — a plain page-through-the-store pair), so passing a
    *  growing offset walks further back into history a page at a time. */
-  getMessages: (chatId: string, session = config.wahaSession, limit = 100, offset = 0) =>
+  getMessages: (
+    chatId: string,
+    session = config.wahaSession,
+    limit = 100,
+    offset = 0,
+    signal?: AbortSignal,
+  ) =>
     wahaFetch<WahaMessage[]>(
       `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}&offset=${offset}`,
-      {},
+      { signal },
       { kind: "read", session, chatId },
     ),
 

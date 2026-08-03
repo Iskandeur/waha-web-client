@@ -93,7 +93,7 @@ export function MessageSearchResults({
       </ul>
 
       {/* Honest about the bound rather than implying the whole archive was searched — the
-          backend indexes the most recent chats, a couple of history pages each. */}
+          backend indexes one recent page from each of the most recent chats. */}
       {!loading && stats?.partial && (
         <div className="search-results-note">
           Searched the {stats.chats} most recent chats ({stats.messages.toLocaleString()} messages).
