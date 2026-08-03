@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { Message } from "../api.js";
 import { formatDateSeparator, isSameCalendarDay } from "../format.js";
+import { containsMessageId } from "../search-navigation.js";
 import { MessageBubble } from "./MessageBubble.js";
 
 function senderKey(m: Message): string {
@@ -45,6 +46,7 @@ export function ChatThread({
   const highlightRef = useRef<HTMLDivElement>(null);
   const prevMessagesRef = useRef<Message[]>([]);
   const prevScrollHeightRef = useRef(0);
+  const highlightIsLoaded = containsMessageId(messages, highlightMessageId);
 
   // Keeps the thread anchored correctly whichever end grew: a brand-new chat or a message sent
   // or received at the bottom scrolls to the end as before; "load older" prepends messages above
@@ -56,7 +58,7 @@ export function ChatThread({
     const prev = prevMessagesRef.current;
     // A search jump owns the scroll position: don't yank the view back to the newest message
     // (or compensate a "load older" prepend) while we're navigating to a specific hit.
-    const jumping = Boolean(highlightMessageId) && messages.some((m) => m.id === highlightMessageId);
+    const jumping = highlightIsLoaded;
     if (container && !jumping) {
       const prevLastId = prev[prev.length - 1]?.id;
       const newLastId = messages[messages.length - 1]?.id;
@@ -72,16 +74,16 @@ export function ChatThread({
       prevScrollHeightRef.current = container.scrollHeight;
     }
     prevMessagesRef.current = messages;
-  }, [messages, highlightMessageId]);
+  }, [messages, highlightMessageId, highlightIsLoaded]);
 
   // Runs once the highlighted message is actually in the DOM — which may be several "load
   // older" pages after the jump was requested (see App's jump-to-hit loop).
   useEffect(() => {
-    if (!highlightMessageId) return;
-    highlightRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (!highlightMessageId || !highlightIsLoaded || !highlightRef.current) return;
+    highlightRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
     const timer = window.setTimeout(() => onHighlightComplete?.(), 2200);
     return () => window.clearTimeout(timer);
-  }, [highlightMessageId, messages, onHighlightComplete]);
+  }, [highlightMessageId, highlightIsLoaded, messages, onHighlightComplete]);
 
   return (
     <div className="chat-thread" ref={containerRef}>
