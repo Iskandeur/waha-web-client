@@ -13,6 +13,7 @@ import { labelsRoutes } from "./routes/labels.js";
 import { groupsRoutes } from "./routes/groups.js";
 import { profileRoutes } from "./routes/profile.js";
 import { accessRoutes } from "./routes/access.js";
+import { searchRoutes } from "./routes/search.js";
 import { GuardBlockedError } from "./waha-client.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,6 +52,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(labelsRoutes);
   await app.register(groupsRoutes);
   await app.register(profileRoutes);
+  await app.register(searchRoutes());
 
   // Serves the built frontend (frontend/dist) when present — lets a single container run the
   // static demo without a separate web server. Absent in plain `npm run dev:backend` (frontend

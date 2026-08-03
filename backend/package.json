@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/bootstrap.js",
     "setup": "tsx src/setup/cli.ts",
-    "test": "tsx --test src/guard/*.test.ts src/routes/*.test.ts src/setup/*.test.ts src/*.test.ts"
+    "test": "tsx --test src/guard/*.test.ts src/routes/*.test.ts src/search/*.test.ts src/setup/*.test.ts src/*.test.ts"
   },
   "dependencies": {
     "fastify": "^5.0.0",
