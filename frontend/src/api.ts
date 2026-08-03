@@ -61,6 +61,44 @@ export interface NumberStatus {
   chatId: string | null;
 }
 
+/** A highlighted span *inside a `SearchHit.snippet`* — the backend computes these so the
+ *  frontend never has to re-implement the (accent-folding) matcher to underline a word. */
+export interface Highlight {
+  start: number;
+  length: number;
+}
+
+export interface SearchHit {
+  chatId: string;
+  chatName: string;
+  messageId: string;
+  timestamp: number;
+  fromMe: boolean;
+  snippet: string;
+  highlights: Highlight[];
+}
+
+/** `stats.partial` is the honest bit: the backend indexes a bounded slice of history (see
+ *  backend/src/search/message-index.ts), so the UI says "searched the last N chats" rather
+ *  than implying the whole archive was covered. */
+export interface SearchStats {
+  chats: number;
+  messages: number;
+  builtAt: number;
+  buildMs: number;
+  partial: boolean;
+  skippedChats: number;
+  searchMs: number;
+  matches: number;
+}
+
+export interface SearchResponse {
+  query: string;
+  terms: string[];
+  results: SearchHit[];
+  stats: SearchStats;
+}
+
 export interface Message {
   id: string;
   timestamp: number;
@@ -644,6 +682,15 @@ const realApi = {
   // --- Guard (anti-detection) ---------------------------------------------------------------
 
   getGuardStatus: () => fetch("/api/guard/status").then((r) => json<GuardStatus>(r)),
+
+  // --- Search ------------------------------------------------------------------------------
+
+  searchMessages: (query: string, opts: { chatId?: string; limit?: number } = {}) => {
+    const params = new URLSearchParams({ q: query });
+    if (opts.chatId) params.set("chatId", opts.chatId);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    return fetch(`/api/search?${params}`).then((r) => json<SearchResponse>(r));
+  },
 };
 
 export const api = DEMO_MODE ? demoApi : realApi;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   api,
   DEMO_MODE,
@@ -9,6 +9,7 @@ import {
   type Message,
   type MessageButton,
   type OutgoingFile,
+  type SearchHit,
 } from "./api.js";
 import { ChatList } from "./components/ChatList.js";
 import { ChatHeader } from "./components/ChatHeader.js";
@@ -37,6 +38,9 @@ export default function App() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  // Set when a chat was opened from a search hit: the message to scroll to and flash.
+  const [searchTargetId, setSearchTargetId] = useState<string | null>(null);
+  const jumping = useRef(false);
 
   async function loadMessages(chatId: string) {
     const { messages, limit, truncated } = await api.getMessages(chatId);
@@ -65,13 +69,53 @@ export default function App() {
     }
   }
 
+  /** How many extra history pages a search jump may pull before giving up. The index reaches
+   *  further back than one thread page, so a hit can legitimately sit a page or two above what
+   *  opening the chat loads — but "keep paging until found" on a chat with years of history
+   *  would be a WAHA hammer, so it stops and leaves the message unhighlighted instead. */
+  const SEARCH_JUMP_MAX_PAGES = 3;
+
+  /** Opens the hit's chat and walks history backwards until that message is on screen. Owns the
+   *  loading itself (see `jumping`) so the plain "chat selected" effect doesn't race it and
+   *  replace the paged-back thread with just the newest page. */
+  async function handleSelectSearchHit(hit: SearchHit) {
+    jumping.current = true;
+    setSearchTargetId(hit.messageId);
+    setSelectedId(hit.chatId);
+    try {
+      let loaded = await api.getMessages(hit.chatId);
+      let all = loaded.messages;
+      for (let page = 0; page < SEARCH_JUMP_MAX_PAGES; page++) {
+        if (all.some((m) => m.id === hit.messageId)) break;
+        if (!loaded.truncated) break;
+        loaded = await api.getMessages(hit.chatId, all.length);
+        const existing = new Set(all.map((m) => m.id));
+        const fresh = loaded.messages.filter((m) => !existing.has(m.id));
+        if (fresh.length === 0) break;
+        all = [...fresh, ...all];
+      }
+      setMessages(all);
+      setHistoryLimit(loaded.limit);
+      setHistoryTruncated(loaded.truncated);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    } finally {
+      jumping.current = false;
+    }
+  }
+
   useEffect(() => {
     api.listChats().then(setChats).catch(console.error);
   }, []);
 
   useEffect(() => {
     if (!selectedId) return;
-    loadMessages(selectedId).catch(console.error);
+    if (jumping.current) {
+      // A search jump is loading this thread itself, several pages deep.
+    } else {
+      setSearchTargetId(null);
+      loadMessages(selectedId).catch(console.error);
+    }
     setChats((prev) =>
       prev.map((c) => (c.id === selectedId ? { ...c, unreadCount: 0 } : c)),
     );
@@ -458,6 +502,7 @@ export default function App() {
             onStartNewChat={handleStartNewChat}
             onStartNewChatFromContact={handleStartNewChatFromContact}
             onGroupCreatedOrJoined={handleGroupCreatedOrJoined}
+            onSelectSearchHit={handleSelectSearchHit}
           />
         </aside>
         <main className="main">
@@ -486,6 +531,7 @@ export default function App() {
                 onEditMessage={handleEditMessage}
                 onDeleteMessage={handleDeleteMessage}
                 onVotePoll={handleVotePoll}
+                highlightMessageId={searchTargetId}
               />
               {sendError && <div className="send-error-banner">Message not sent: {sendError}</div>}
               <CommandBar

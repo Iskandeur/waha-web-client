@@ -2506,3 +2506,131 @@ textarea {
 .group-panel-menu-danger:hover {
   background: var(--color-danger-bg) !important;
 }
+
+/* --- Message search ------------------------------------------------------------------------
+   The sidebar scrolls as one column once search is on (chat matches, then message matches), so
+   the two result kinds share a scrollbar instead of fighting over two nested ones. */
+
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-400) transparent;
+}
+
+.sidebar-scroll .chat-list {
+  flex: none;
+  overflow-y: visible;
+}
+
+.search-results-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 20px 4px;
+  font: 700 10.5px/1.2 "Figtree", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+
+.search-results-meta {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 10.5px;
+  color: var(--color-neutral-500);
+}
+
+.search-hit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 4px;
+}
+
+.search-hit {
+  padding: 9px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.search-hit:hover,
+.search-hit:focus-visible {
+  background: var(--color-neutral-200);
+  outline: none;
+}
+
+.search-hit-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.search-hit-chat {
+  font-weight: 600;
+  font-size: 0.88em;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-hit-time {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--color-neutral-500);
+}
+
+.search-hit-snippet {
+  margin-top: 2px;
+  font-size: 0.85em;
+  line-height: 1.35;
+  color: var(--color-neutral-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.search-hit-you {
+  color: var(--color-neutral-500);
+}
+
+.search-hit-mark {
+  background: var(--color-accent-200);
+  color: var(--color-accent-800);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.search-results-empty,
+.search-results-note,
+.search-results-error {
+  padding: 6px 20px 12px;
+  font-size: 0.8em;
+  line-height: 1.4;
+  color: var(--color-neutral-600);
+}
+
+.search-results-error {
+  color: var(--color-danger);
+}
+
+/* The message a search hit led to: a brief flash so the eye lands on it after the scroll. */
+.message-row.search-target .message {
+  animation: search-target-flash 2.2s ease-out 1;
+}
+
+@keyframes search-target-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--color-accent-400);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}

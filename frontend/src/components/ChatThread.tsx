@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import type { Message } from "../api.js";
 import { formatDateSeparator, isSameCalendarDay } from "../format.js";
 import { MessageBubble } from "./MessageBubble.js";
@@ -19,6 +19,7 @@ export function ChatThread({
   onEditMessage,
   onDeleteMessage,
   onVotePoll,
+  highlightMessageId,
 }: {
   messages: Message[];
   historyTruncated?: boolean;
@@ -31,9 +32,13 @@ export function ChatThread({
   onEditMessage: (messageId: string, text: string) => void;
   onDeleteMessage: (messageId: string) => void;
   onVotePoll: (messageId: string, votes: string[]) => void;
+  /** Set when the thread was opened from a search hit — that message gets scrolled to and
+   *  flashed instead of the usual "jump to the bottom". */
+  highlightMessageId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   const prevMessagesRef = useRef<Message[]>([]);
   const prevScrollHeightRef = useRef(0);
 
@@ -45,7 +50,10 @@ export function ChatThread({
   useLayoutEffect(() => {
     const container = containerRef.current;
     const prev = prevMessagesRef.current;
-    if (container) {
+    // A search jump owns the scroll position: don't yank the view back to the newest message
+    // (or compensate a "load older" prepend) while we're navigating to a specific hit.
+    const jumping = Boolean(highlightMessageId) && messages.some((m) => m.id === highlightMessageId);
+    if (container && !jumping) {
       const prevLastId = prev[prev.length - 1]?.id;
       const newLastId = messages[messages.length - 1]?.id;
       const prevFirstId = prev[0]?.id;
@@ -60,7 +68,14 @@ export function ChatThread({
       prevScrollHeightRef.current = container.scrollHeight;
     }
     prevMessagesRef.current = messages;
-  }, [messages]);
+  }, [messages, highlightMessageId]);
+
+  // Runs once the highlighted message is actually in the DOM — which may be several "load
+  // older" pages after the jump was requested (see App's jump-to-hit loop).
+  useEffect(() => {
+    if (!highlightMessageId) return;
+    highlightRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [highlightMessageId, messages]);
 
   return (
     <div className="chat-thread" ref={containerRef}>
@@ -82,8 +97,13 @@ export function ChatThread({
         const prev = messages[i - 1];
         const newDay = !prev || !isSameCalendarDay(prev.timestamp, m.timestamp);
         const showSender = !m.fromMe && (newDay || !prev || senderKey(prev) !== senderKey(m));
+        const highlighted = m.id === highlightMessageId;
         return (
-          <div key={m.id}>
+          <div
+            key={m.id}
+            ref={highlighted ? highlightRef : undefined}
+            className={highlighted ? "message-row search-target" : "message-row"}
+          >
             {newDay && (
               <div className="date-separator">
                 <span>{formatDateSeparator(m.timestamp)}</span>
