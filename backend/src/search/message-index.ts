@@ -208,11 +208,22 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
     let skipped = 0;
     let partial = chats.length > options.maxChats;
     let lastError: unknown = null;
+    let hasFetched = false;
 
     for (const chat of selected) {
       const label = chatLabel(chat);
+      // Keep each chat isolated until every requested page succeeds. Otherwise a failure on
+      // page two would mark the chat as skipped while quietly leaving page one's messages in
+      // the searchable index — contradictory stats and an incomplete result set presented as
+      // valid. A skipped chat contributes nothing; the other chats still remain searchable.
+      const chatEntries: IndexedMessage[] = [];
       try {
         for (let page = 0; page < options.pagesPerChat; page++) {
+          // Pace the whole WAHA walk, not only consecutive pages within one chat. Most chats
+          // have a short first page; sleeping after full pages alone would still fire one read
+          // per chat back-to-back — exactly the cross-chat burst this index is meant to avoid.
+          if (hasFetched && options.pauseMs > 0) await options.sleep(options.pauseMs);
+          hasFetched = true;
           const messages = await source.getMessages(
             chat.id,
             options.pageSize,
@@ -220,7 +231,7 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
           );
           for (const message of messages) {
             if (typeof message.body !== "string" || message.body.length === 0) continue;
-            collected.push({
+            chatEntries.push({
               chatId: chat.id,
               chatName: label,
               id: message.id,
@@ -233,8 +244,8 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
           // page on the last iteration means there is more history we chose not to walk.
           if (messages.length < options.pageSize) break;
           if (page === options.pagesPerChat - 1) partial = true;
-          if (options.pauseMs > 0) await options.sleep(options.pauseMs);
         }
+        collected.push(...chatEntries);
       } catch (err) {
         // One unreachable chat shouldn't cost the user every other result — but if *nothing*
         // could be indexed, the error is rethrown below rather than reported as "no matches".

@@ -16,12 +16,15 @@ test("isValidSearchQuery rejects queries shorter than the minimum", () => {
 
 /** An index over fixed data — the route is what's under test here, not WAHA paging. */
 function buildTestApp() {
+  let listCalls = 0;
   const source: IndexSource = {
-    listChats: async () =>
-      [
+    listChats: async () => {
+      listCalls++;
+      return [
         { id: "a@c.us", name: "Alex" },
         { id: "b@c.us", name: "Sam" },
-      ] as WahaChat[],
+      ] as WahaChat[];
+    },
     getMessages: async (chatId, _limit, offset) => {
       if (offset > 0) return [];
       const bodies: Record<string, string[]> = {
@@ -38,7 +41,11 @@ function buildTestApp() {
     },
   };
   const app = Fastify();
-  return { app, register: app.register(searchRoutes(createMessageIndex(source, { pauseMs: 0 }))) };
+  return {
+    app,
+    register: app.register(searchRoutes(createMessageIndex(source, { pauseMs: 0 }))),
+    listCalls: () => listCalls,
+  };
 }
 
 test("GET /api/search returns hits with snippets and highlight offsets", async () => {
@@ -95,5 +102,13 @@ test("GET /api/search reports index stats alongside the results", async () => {
   assert.equal(body.stats.messages, 3);
   assert.equal(body.stats.matches, 2);
   assert.equal(typeof body.stats.buildMs, "number");
+  await app.close();
+});
+
+test("GET /api/search ignores a public refresh flag instead of rebuilding WAHA history", async () => {
+  const { app, listCalls } = buildTestApp();
+  await app.inject({ method: "GET", url: "/api/search?q=pizza" });
+  await app.inject({ method: "GET", url: "/api/search?q=pizza&refresh=1" });
+  assert.equal(listCalls(), 1);
   await app.close();
 });

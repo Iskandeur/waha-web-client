@@ -20,9 +20,9 @@ const defaultIndex: MessageIndex = createMessageIndex({
 export function searchRoutes(index: MessageIndex = defaultIndex) {
   return async function register(app: FastifyInstance) {
     app.get<{
-      Querystring: { q?: string; chatId?: string; limit?: string; refresh?: string };
+      Querystring: { q?: string; chatId?: string; limit?: string };
     }>("/api/search", async (req, reply) => {
-      const { q, chatId, limit, refresh } = req.query;
+      const { q, chatId, limit } = req.query;
       if (!isValidSearchQuery(q)) {
         reply.code(400);
         return { error: `q must be at least ${MIN_QUERY_LENGTH} characters` };
@@ -37,7 +37,6 @@ export function searchRoutes(index: MessageIndex = defaultIndex) {
       return index.search(q, {
         chatId: chatId?.trim() || undefined,
         limit: parsedLimit,
-        refresh: refresh === "true" || refresh === "1",
       });
     });
   };

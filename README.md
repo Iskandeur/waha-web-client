@@ -299,7 +299,7 @@ Done this pass:
 
 - **Anti-detection guard** (`backend/src/guard/`): rate limits, jitter, typing simulation,
   burst/duplicate-content detection, circuit breaker, audit log — see above. Unit-tested
-  (`npm test --workspace backend`, 144 cases across the whole backend today) and, since
+  (`npm test --workspace backend`, 147 cases across the whole backend today) and, since
   2026-07-31, exercised against a real WAHA session — see Roadmap item 1.
 - **Frontend rebuild**: search + filter tabs, avatars, unread badges, pinned chats, read
   receipts (✓/✓✓/blue ✓✓), date separators, grouped consecutive bubbles, sender names in

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api,
   DEMO_MODE,
@@ -40,6 +40,7 @@ export default function App() {
   const [sendError, setSendError] = useState<string | null>(null);
   // Set when a chat was opened from a search hit: the message to scroll to and flash.
   const [searchTargetId, setSearchTargetId] = useState<string | null>(null);
+  const clearSearchTarget = useCallback(() => setSearchTargetId(null), []);
   const jumping = useRef(false);
 
   async function loadMessages(chatId: string) {
@@ -532,6 +533,7 @@ export default function App() {
                 onDeleteMessage={handleDeleteMessage}
                 onVotePoll={handleVotePoll}
                 highlightMessageId={searchTargetId}
+                onHighlightComplete={clearSearchTarget}
               />
               {sendError && <div className="send-error-banner">Message not sent: {sendError}</div>}
               <CommandBar

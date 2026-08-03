@@ -179,6 +179,31 @@ test("index: stops paging a chat once a short page comes back", async () => {
   assert.deepEqual(offsets, [0], "short first page ends the walk");
 });
 
+test("index: spaces WAHA reads across chats, including short one-page histories", async () => {
+  const events: string[] = [];
+  const source = fakeSource(
+    [
+      { id: "a@c.us", messages: ["one"] },
+      { id: "b@c.us", messages: ["two"] },
+      { id: "c@c.us", messages: ["three"] },
+    ],
+    (chatId) => events.push(`fetch:${chatId}`),
+  );
+  const index = createMessageIndex(source, {
+    ...FAST,
+    pauseMs: 120,
+    sleep: async (ms) => events.push(`sleep:${ms}`),
+  });
+  await index.search("one");
+  assert.deepEqual(events, [
+    "fetch:a@c.us",
+    "sleep:120",
+    "fetch:b@c.us",
+    "sleep:120",
+    "fetch:c@c.us",
+  ]);
+});
+
 test("index: caps the number of chats and reports the result as partial", async () => {
   const chats = Array.from({ length: 5 }, (_, i) => ({
     id: `c${i}@c.us`,
@@ -208,6 +233,32 @@ test("index: one failing chat is skipped, the rest still searchable", async () =
   assert.equal(res.results.length, 1);
   assert.equal(res.results[0].chatId, "ok@c.us");
   assert.equal(res.stats.skippedChats, 1);
+});
+
+test("index: a chat failing on a later page leaves no partial messages behind", async () => {
+  const source: IndexSource = {
+    listChats: async () => [
+      { id: "good@c.us", name: "Good" },
+      { id: "partial@c.us", name: "Partial" },
+    ] as WahaChat[],
+    getMessages: async (chatId, limit, offset) => {
+      if (chatId === "partial@c.us" && offset > 0) throw new Error("second page failed");
+      const count = offset === 0 ? limit : 1;
+      return Array.from({ length: count }, (_, i) => ({
+        id: `${chatId}-${offset + i}`,
+        timestamp: offset + i,
+        from: chatId,
+        fromMe: false,
+        body: chatId === "partial@c.us" ? "partial-only needle" : "good needle",
+      })) as WahaMessage[];
+    },
+  };
+  const index = createMessageIndex(source, FAST);
+  const res = await index.search("needle");
+  assert.equal(res.results.length, 11);
+  assert.ok(res.results.every((hit) => hit.chatId === "good@c.us"));
+  assert.equal(res.stats.skippedChats, 1);
+  assert.equal(res.stats.messages, 11);
 });
 
 test("index: when EVERY chat fails, the error surfaces instead of a silent empty result", async () => {

@@ -20,6 +20,7 @@ export function ChatThread({
   onDeleteMessage,
   onVotePoll,
   highlightMessageId,
+  onHighlightComplete,
 }: {
   messages: Message[];
   historyTruncated?: boolean;
@@ -35,6 +36,9 @@ export function ChatThread({
   /** Set when the thread was opened from a search hit — that message gets scrolled to and
    *  flashed instead of the usual "jump to the bottom". */
   highlightMessageId?: string | null;
+  /** Clears the navigation target once its visual flash is finished, so later message reloads
+   *  resume the normal bottom-of-thread anchoring instead of jumping back to an old result. */
+  onHighlightComplete?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -75,7 +79,9 @@ export function ChatThread({
   useEffect(() => {
     if (!highlightMessageId) return;
     highlightRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [highlightMessageId, messages]);
+    const timer = window.setTimeout(() => onHighlightComplete?.(), 2200);
+    return () => window.clearTimeout(timer);
+  }, [highlightMessageId, messages, onHighlightComplete]);
 
   return (
     <div className="chat-thread" ref={containerRef}>
