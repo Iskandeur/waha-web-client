@@ -153,8 +153,9 @@ export function ChatList({
       .catch(() => setLabelFilterChatIds([]));
   }, [labelFilterId]);
 
-  // Debounced message search. `cancelled` guards against a slow request landing after a newer
-  // one (or after the box was cleared) and overwriting fresher results.
+  // Debounced message search. The backend builds its bounded WAHA index progressively: a 202
+  // response carries the results indexed so far, so poll the shared build until `building`
+  // clears. `cancelled` prevents an old query's poll from overwriting a newer one.
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < MIN_SEARCH_LENGTH) {
@@ -165,29 +166,32 @@ export function ChatList({
       return;
     }
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
     setSearching(true);
-    const timer = setTimeout(() => {
-      api
-        .searchMessages(trimmed)
-        .then((res) => {
-          if (cancelled) return;
+    async function runSearch() {
+      try {
+        const res = await api.searchMessages(trimmed);
+        if (cancelled) return;
           setHits(res.results);
           setSearchStats(res.stats);
           setSearchError(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          setHits([]);
-          setSearchStats(null);
-          setSearchError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setSearching(false);
-        });
-    }, SEARCH_DEBOUNCE_MS);
+        if (res.stats.building) {
+          pollTimer = setTimeout(runSearch, 1500);
+          return;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setHits([]);
+        setSearchStats(null);
+        setSearchError(err instanceof Error ? err.message : String(err));
+      }
+      if (!cancelled) setSearching(false);
+    }
+    const timer = setTimeout(runSearch, SEARCH_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      if (pollTimer) clearTimeout(pollTimer);
     };
   }, [query]);
 

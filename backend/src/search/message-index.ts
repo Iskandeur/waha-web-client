@@ -56,7 +56,7 @@ export interface SearchResponse {
   query: string;
   terms: string[];
   results: SearchHit[];
-  stats: IndexStats & { searchMs: number; matches: number };
+  stats: IndexStats & { searchMs: number; matches: number; building: boolean };
 }
 
 /** Everything the index needs from the outside world, injected so tests never touch WAHA. */
@@ -196,6 +196,7 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
   };
   /** Concurrent searches share one build instead of each starting their own WAHA walk. */
   let building: Promise<void> | null = null;
+  let buildError: unknown = null;
   /** Explicit rather than inferred from `stats.builtAt`, which is a legitimate 0 on an
    *  injected clock (and would then make a freshly built index look like it was never built). */
   let built = false;
@@ -209,6 +210,23 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
     let partial = chats.length > options.maxChats;
     let lastError: unknown = null;
     let hasFetched = false;
+    let indexedChats = 0;
+
+    /** Publish first-build progress chat by chat so an HTTP request never has to sit behind the
+     *  whole WAHA walk. Existing indexes stay visible during a TTL refresh and are swapped only
+     *  when the replacement is complete. */
+    const publishProgress = () => {
+      if (built) return;
+      entries = [...collected];
+      stats = {
+        chats: indexedChats,
+        messages: collected.length,
+        builtAt: startedAt,
+        buildMs: options.now() - startedAt,
+        partial: true,
+        skippedChats: skipped,
+      };
+    };
 
     for (const chat of selected) {
       const label = chatLabel(chat);
@@ -246,11 +264,14 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
           if (page === options.pagesPerChat - 1) partial = true;
         }
         collected.push(...chatEntries);
+        indexedChats++;
+        publishProgress();
       } catch (err) {
         // One unreachable chat shouldn't cost the user every other result — but if *nothing*
         // could be indexed, the error is rethrown below rather than reported as "no matches".
         skipped++;
         lastError = err;
+        publishProgress();
       }
     }
 
@@ -268,20 +289,35 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
     };
   }
 
-  async function ensureBuilt(force = false): Promise<void> {
+  function startBuild(force = false): Promise<void> | null {
     const fresh = built && options.now() - stats.builtAt < options.ttlMs;
-    if (fresh && !force) return;
+    if (fresh && !force) return null;
     if (!building) {
-      building = build().finally(() => {
-        building = null;
+      buildError = null;
+      const pending = build().catch((err) => {
+        buildError = err;
+        throw err;
       });
+      building = pending;
+      // A progressive HTTP caller deliberately doesn't await this promise. Attach a rejection
+      // handler here so a total WAHA failure is stored for its next poll, never unhandled.
+      void pending.catch(() => undefined);
+      void pending.finally(() => {
+        if (building === pending) building = null;
+      }).catch(() => undefined);
     }
-    await building;
+    return building;
+  }
+
+  async function ensureBuilt(force = false): Promise<void> {
+    const pending = startBuild(force);
+    if (pending) await pending;
+    if (buildError && !built) throw buildError;
   }
 
   async function search(
     query: string,
-    opts: { chatId?: string; limit?: number; refresh?: boolean } = {},
+    opts: { chatId?: string; limit?: number; refresh?: boolean; waitForBuild?: boolean } = {},
   ): Promise<SearchResponse> {
     const terms = parseQuery(query);
     if (terms.length === 0) {
@@ -289,11 +325,14 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
         query,
         terms,
         results: [],
-        stats: { ...stats, searchMs: 0, matches: 0 },
+        stats: { ...stats, searchMs: 0, matches: 0, building: Boolean(building) },
       };
     }
 
-    await ensureBuilt(opts.refresh);
+    if (buildError && !building && !built && !opts.refresh) throw buildError;
+    const pending = startBuild(opts.refresh);
+    if (pending && opts.waitForBuild !== false) await pending;
+    if (buildError && !building && !built) throw buildError;
     const startedAt = options.now();
     const limit = Math.min(opts.limit ?? options.maxResults, options.maxResults);
     const scope = opts.chatId ? entries.filter((e) => e.chatId === opts.chatId) : entries;
@@ -319,7 +358,12 @@ export function createMessageIndex(source: IndexSource, overrides: Partial<Index
       query,
       terms,
       results: hits.slice(0, limit),
-      stats: { ...stats, searchMs: options.now() - startedAt, matches: hits.length },
+      stats: {
+        ...stats,
+        searchMs: options.now() - startedAt,
+        matches: hits.length,
+        building: Boolean(building),
+      },
     };
   }
 

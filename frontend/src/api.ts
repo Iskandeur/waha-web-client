@@ -90,6 +90,7 @@ export interface SearchStats {
   skippedChats: number;
   searchMs: number;
   matches: number;
+  building: boolean;
 }
 
 export interface SearchResponse {

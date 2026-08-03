@@ -48,11 +48,23 @@ function buildTestApp() {
   };
 }
 
+async function searchUntilReady(app: ReturnType<typeof Fastify>, url: string) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const res = await app.inject({ method: "GET", url });
+    const body = res.json();
+    if (!body.stats?.building) return { res, body };
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error("search index did not finish in test");
+}
+
 test("GET /api/search returns hits with snippets and highlight offsets", async () => {
   const { app } = buildTestApp();
-  const res = await app.inject({ method: "GET", url: "/api/search?q=pizza" });
+  const started = await app.inject({ method: "GET", url: "/api/search?q=pizza" });
+  assert.equal(started.statusCode, 202);
+  assert.equal(started.json().stats.building, true);
+  const { res, body } = await searchUntilReady(app, "/api/search?q=pizza");
   assert.equal(res.statusCode, 200);
-  const body = res.json();
   assert.equal(body.results.length, 2);
   assert.deepEqual(body.terms, ["pizza"]);
   for (const hit of body.results) {
@@ -64,9 +76,8 @@ test("GET /api/search returns hits with snippets and highlight offsets", async (
 
 test("GET /api/search matches through accents (crêperie found by 'creperie')", async () => {
   const { app } = buildTestApp();
-  const res = await app.inject({ method: "GET", url: "/api/search?q=creperie" });
+  const { res, body } = await searchUntilReady(app, "/api/search?q=creperie");
   assert.equal(res.statusCode, 200);
-  const body = res.json();
   assert.equal(body.results.length, 1);
   assert.match(body.results[0].snippet, /crêperie/);
   await app.close();
@@ -74,8 +85,7 @@ test("GET /api/search matches through accents (crêperie found by 'creperie')", 
 
 test("GET /api/search?chatId scopes the search to one chat", async () => {
   const { app } = buildTestApp();
-  const res = await app.inject({ method: "GET", url: "/api/search?q=pizza&chatId=b%40c.us" });
-  const body = res.json();
+  const { body } = await searchUntilReady(app, "/api/search?q=pizza&chatId=b%40c.us");
   assert.equal(body.results.length, 1);
   assert.equal(body.results[0].chatId, "b@c.us");
   await app.close();
@@ -97,7 +107,7 @@ test("GET /api/search rejects a nonsense limit with 400", async () => {
 
 test("GET /api/search reports index stats alongside the results", async () => {
   const { app } = buildTestApp();
-  const body = (await app.inject({ method: "GET", url: "/api/search?q=pizza" })).json();
+  const { body } = await searchUntilReady(app, "/api/search?q=pizza");
   assert.equal(body.stats.chats, 2);
   assert.equal(body.stats.messages, 3);
   assert.equal(body.stats.matches, 2);
@@ -107,8 +117,9 @@ test("GET /api/search reports index stats alongside the results", async () => {
 
 test("GET /api/search ignores a public refresh flag instead of rebuilding WAHA history", async () => {
   const { app, listCalls } = buildTestApp();
-  await app.inject({ method: "GET", url: "/api/search?q=pizza" });
-  await app.inject({ method: "GET", url: "/api/search?q=pizza&refresh=1" });
+  await searchUntilReady(app, "/api/search?q=pizza");
+  const afterFlag = await app.inject({ method: "GET", url: "/api/search?q=pizza&refresh=1" });
+  assert.equal(afterFlag.statusCode, 200);
   assert.equal(listCalls(), 1);
   await app.close();
 });

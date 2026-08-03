@@ -168,6 +168,54 @@ test("index: concurrent searches share a single build", async () => {
   assert.equal(source.calls, 1, "one page fetched once, not three times");
 });
 
+test("index: non-blocking search publishes progress while one shared build continues", async () => {
+  let releaseSecond!: () => void;
+  let signalSecondStarted!: () => void;
+  const secondStarted = new Promise<void>((resolve) => {
+    signalSecondStarted = resolve;
+  });
+  const secondGate = new Promise<void>((resolve) => {
+    releaseSecond = resolve;
+  });
+  const source: IndexSource = {
+    listChats: async () => [
+      { id: "a@c.us", name: "A" },
+      { id: "b@c.us", name: "B" },
+    ] as WahaChat[],
+    getMessages: async (chatId) => {
+      if (chatId === "b@c.us") {
+        signalSecondStarted();
+        await secondGate;
+      }
+      return [{
+        id: `${chatId}-1`,
+        timestamp: chatId === "a@c.us" ? 1 : 2,
+        from: chatId,
+        fromMe: false,
+        body: "shared needle",
+      }] as WahaMessage[];
+    },
+  };
+  const index = createMessageIndex(source, { ...FAST, pauseMs: 0 });
+
+  const started = await index.search("needle", { waitForBuild: false });
+  assert.equal(started.stats.building, true);
+  await secondStarted;
+
+  const partial = await index.search("needle", { waitForBuild: false });
+  assert.equal(partial.stats.building, true);
+  assert.equal(partial.stats.chats, 1);
+  assert.equal(partial.stats.messages, 1);
+  assert.equal(partial.results.length, 1);
+
+  releaseSecond();
+  await index.ensureBuilt();
+  const complete = await index.search("needle");
+  assert.equal(complete.stats.building, false);
+  assert.equal(complete.stats.chats, 2);
+  assert.equal(complete.results.length, 2);
+});
+
 test("index: stops paging a chat once a short page comes back", async () => {
   const offsets: number[] = [];
   const source = fakeSource(

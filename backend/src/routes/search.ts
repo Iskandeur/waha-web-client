@@ -34,10 +34,16 @@ export function searchRoutes(index: MessageIndex = defaultIndex) {
       }
       // A WAHA failure (or a guard block) propagates to the app-wide error handler, which
       // turns GuardBlockedError into a 429 — same contract as every other route.
-      return index.search(q, {
+      const result = await index.search(q, {
         chatId: chatId?.trim() || undefined,
         limit: parsedLimit,
+        // A first index can take longer than a public reverse proxy timeout because WAHA reads
+        // are intentionally sequential. Return partial progress immediately; the UI polls this
+        // shared build instead of spawning another one or holding one HTTP request open.
+        waitForBuild: false,
       });
+      if (result.stats.building) reply.code(202);
+      return result;
     });
   };
 }

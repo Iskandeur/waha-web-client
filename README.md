@@ -128,7 +128,9 @@ WAHA exposes no search endpoint: the only way to look inside messages is to page
 history, one HTTP call per 100 messages. Searching by re-walking history on every keystroke
 would be both slow for the user and exactly the kind of traffic burst the guard above exists to
 avoid — so `backend/src/search/message-index.ts` builds a **bounded in-memory index** on the
-first search and reuses it for 5 minutes:
+first search and reuses it for 5 minutes. The build is **progressive**: the API returns `202`
+with the messages indexed so far, and the UI polls that one shared build until it is complete,
+so a deliberately paced WAHA walk never becomes a reverse-proxy timeout:
 
 - the 25 most recent chats, 2 pages of history each (≤ 50 WAHA calls, spaced ~120 ms apart),
 - concurrent searches share one build; a chat whose fetch fails is skipped rather than failing
@@ -148,7 +150,8 @@ matcher of its own.
 ```
 GET /api/search?q=dinner&chatId=<optional>&limit=<optional>
   -> { query, terms, results: [{ chatId, chatName, messageId, timestamp, fromMe,
-                                 snippet, highlights: [{ start, length }] }], stats }
+                                 snippet, highlights: [{ start, length }] }],
+       stats: { ..., building } }  # 202 while building, 200 when complete
 ```
 
 In the UI, the existing sidebar search box now does both jobs: chat names filter locally as you
@@ -299,7 +302,7 @@ Done this pass:
 
 - **Anti-detection guard** (`backend/src/guard/`): rate limits, jitter, typing simulation,
   burst/duplicate-content detection, circuit breaker, audit log — see above. Unit-tested
-  (`npm test --workspace backend`, 147 cases across the whole backend today) and, since
+  (`npm test --workspace backend`, 148 cases across the whole backend today) and, since
   2026-07-31, exercised against a real WAHA session — see Roadmap item 1.
 - **Frontend rebuild**: search + filter tabs, avatars, unread badges, pinned chats, read
   receipts (✓/✓✓/blue ✓✓), date separators, grouped consecutive bubbles, sender names in

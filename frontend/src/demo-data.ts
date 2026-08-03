@@ -907,6 +907,7 @@ export const demoApi = {
         skippedChats: 0,
         searchMs: 1,
         matches: results.length,
+        building: false,
       },
     });
   },

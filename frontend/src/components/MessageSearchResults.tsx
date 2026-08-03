@@ -48,7 +48,13 @@ export function MessageSearchResults({
     <div className="search-results">
       <div className="search-results-header">
         <span>Messages</span>
-        {loading && <span className="search-results-meta">searching…</span>}
+        {loading && (
+          <span className="search-results-meta">
+            {stats
+              ? `indexing… ${stats.messages.toLocaleString()} messages · ${stats.matches} matches`
+              : "starting index…"}
+          </span>
+        )}
         {!loading && stats && (
           <span className="search-results-meta">
             {stats.matches} in {stats.messages.toLocaleString()} messages · {stats.searchMs}ms
