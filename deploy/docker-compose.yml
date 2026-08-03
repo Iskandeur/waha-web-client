@@ -4,7 +4,12 @@
 # Bound to 127.0.0.1 only, same pattern as this VPS's other services (WAHA) — reach it from the
 # outside through a reverse proxy / tunnel, never by publishing the port directly.
 #
-# Secrets (ACCESS_PIN, ACCESS_SESSION_SECRET) live in deploy/.env (git-ignored), never committed.
+# Secrets (ACCESS_PIN, ACCESS_SESSION_SECRET, WAHA_API_KEY) live in deploy/.env (git-ignored),
+# never committed. WAHA_* vars default to empty/false here on PURPOSE — demo mode stays the safe
+# default for anyone else deploying this compose file; only THIS instance's .env opts into a real
+# WAHA connection (bug found the hard way on 31/07 : the real-connection env only existed on the
+# live container, never in this file — a plain `docker compose up` would have silently reverted a
+# connected deployment back to demo mode on next redeploy).
 
 name: whatsapp-sharp
 
@@ -21,6 +26,12 @@ services:
       PORT: 8787
       ACCESS_PIN: ${ACCESS_PIN}
       ACCESS_SESSION_SECRET: ${ACCESS_SESSION_SECRET}
+      WAHA_BASE_URL: ${WAHA_BASE_URL:-}
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WAHA_SESSION: ${WAHA_SESSION:-}
+      WAHA_REAL_CONNECTION: ${WAHA_REAL_CONNECTION:-false}
+      WAHA_REAL_CONNECTION_SESSION: ${WAHA_REAL_CONNECTION_SESSION:-}
+      WAHA_REAL_CONNECTION_WRITE: ${WAHA_REAL_CONNECTION_WRITE:-false}
     networks:
       - tunnel
 
