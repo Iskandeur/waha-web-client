@@ -44,7 +44,8 @@ whatsapp-sharp/
 │       │                    exactly one choke point to sit behind, not a checklist to
 │       │                    remember to apply per call site.
 │       ├── guard/           Anti-detection guard — see below.
-│       ├── routes/          sessions, chats, ai, guard (status/log introspection).
+│       ├── search/          Full-text message search — see below.
+│       ├── routes/          sessions, chats, search, ai, guard (status/log introspection).
 │       ├── ai/              The AI command bar's `claude -p` runner.
 │       ├── setup/           `npm run setup` — detects an existing WAHA instance or points you
 │       │                    at the bundled one, see "Turnkey setup" below.
@@ -120,6 +121,40 @@ WAHA instance yet — see [Status](#status--checkpoint). Activating this against
 valued WhatsApp session remains a deliberate decision for whoever runs it, not something
 this codebase does on its own; the public demo deployment never touches WAHA at all (see
 below).
+
+## Message search
+
+WAHA exposes no search endpoint: the only way to look inside messages is to page a chat's
+history, one HTTP call per 100 messages. Searching by re-walking history on every keystroke
+would be both slow for the user and exactly the kind of traffic burst the guard above exists to
+avoid — so `backend/src/search/message-index.ts` builds a **bounded in-memory index** on the
+first search and reuses it for 5 minutes:
+
+- the 25 most recent chats, 2 pages of history each (≤ 50 WAHA calls, spaced ~120 ms apart),
+- concurrent searches share one build; a chat whose fetch fails is skipped rather than failing
+  the whole search — but if *every* chat fails, the error surfaces instead of an empty result
+  that would read as "no matches",
+- results say what was actually covered (`stats.partial`, "searched the N most recent chats")
+  rather than implying the whole archive was searched. WhatsApp multi-device sessions don't
+  hold the full history locally anyway, so any stronger claim would be false.
+
+Matching is accent- and case-insensitive (`crêperie` is found by `creperie`), terms are AND-ed,
+and `"quoted phrases"` match literally. Highlight offsets are computed server-side **against the
+original string** — folding is done one character at a time with an index map back, because NFD
+decomposition and lowercasing both change string length, so a naive fold shifts every highlight
+after the first accent. The frontend is then a dumb slicer, with no second, subtly-different
+matcher of its own.
+
+```
+GET /api/search?q=dinner&chatId=<optional>&limit=<optional>
+  -> { query, terms, results: [{ chatId, chatName, messageId, timestamp, fromMe,
+                                 snippet, highlights: [{ start, length }] }], stats }
+```
+
+In the UI, the existing sidebar search box now does both jobs: chat names filter locally as you
+type, message matches arrive from the backend after a pause in typing. Clicking a hit opens the
+chat, pages history backwards until that message is loaded (capped at 3 extra pages — a jump
+into deep history stops rather than hammering WAHA), scrolls to it and flashes it.
 
 ## The AI command bar
 
@@ -264,8 +299,8 @@ Done this pass:
 
 - **Anti-detection guard** (`backend/src/guard/`): rate limits, jitter, typing simulation,
   burst/duplicate-content detection, circuit breaker, audit log — see above. Unit-tested
-  (12 cases, `npm test --workspace backend`), **not yet exercised against a real WAHA
-  instance** (no disposable WAHA instance was stood up in this pass — see below).
+  (`npm test --workspace backend`, 144 cases across the whole backend today) and, since
+  2026-07-31, exercised against a real WAHA session — see Roadmap item 1.
 - **Frontend rebuild**: search + filter tabs, avatars, unread badges, pinned chats, read
   receipts (✓/✓✓/blue ✓✓), date separators, grouped consecutive bubbles, sender names in
   groups, image/file/voice message placeholders, a WhatsApp-style composer (emoji/attach/
@@ -293,15 +328,19 @@ Still open / not done in this pass (honest gaps, not silently skipped):
 
 ## Roadmap
 
-1. Verify end-to-end against a real disposable WAHA instance — both the UI's response-shape
-   assumptions and the guard's behavior under real WAHA errors/rate-limit responses. See
-   [`docs/real-connection-plan.md`](docs/real-connection-plan.md) for the staged plan (and the
-   `WAHA_REAL_CONNECTION*` guard flags, off by default) drafted for connecting to a specific
-   real, valued session safely.
+1. ~~Verify end-to-end against a real WAHA instance.~~ **Done**: a self-hosted deployment has
+   been running against a real session since 2026-07-31, through the staged
+   [`docs/real-connection-plan.md`](docs/real-connection-plan.md) flags (`WAHA_REAL_CONNECTION*`,
+   still off by default) and a session-scoped API key. The guard has since been observed doing
+   its job for real — a run of WAHA `500`s on presence calls tripped the circuit breaker, which
+   then refused further calls until it recovered. What's still open from this item: the UI
+   assumes richer message shapes (`type`, avatar fields) than WAHA's raw responses carry, so
+   some of the frontend's typing is still demo-shaped.
 2. Real media upload/download (currently placeholder shapes only).
 3. Multi-session support in the UI (switch between linked WhatsApp accounts).
-4. More AI command bar actions: natural-language search across chats, quick-reply
-   suggestions surfaced proactively (still draft-only, never auto-send).
+4. More AI command bar actions: quick-reply suggestions surfaced proactively (still
+   draft-only, never auto-send). Plain full-text search across chats now ships — see
+   "Message search" above; the natural-language layer on top of it is what's left.
 5. Message pagination/infinite scroll.
 6. Tighten the guard's warm-up detection to a real session-start signal instead of backend
    process boot time, once WAHA's session metadata is verified against a live instance.
