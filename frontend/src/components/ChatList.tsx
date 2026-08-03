@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, type Chat, type Contact, type SearchHit, type SearchStats } from "../api.js";
+import { chatNameMatches } from "../chat-name-search.js";
 import { formatListTimestamp } from "../format.js";
 import { Avatar } from "./Avatar.js";
 import { ContactPicker } from "./ContactPicker.js";
@@ -172,9 +173,9 @@ export function ChatList({
       try {
         const res = await api.searchMessages(trimmed);
         if (cancelled) return;
-          setHits(res.results);
-          setSearchStats(res.stats);
-          setSearchError(null);
+        setHits(res.results);
+        setSearchStats(res.stats);
+        setSearchError(null);
         if (res.stats.building) {
           pollTimer = setTimeout(runSearch, 1500);
           return;
@@ -201,7 +202,7 @@ export function ChatList({
     const q = query.trim().toLowerCase();
     return chats
       .filter((c) => (filter === "archived" ? c.isArchived : !c.isArchived))
-      .filter((c) => (q ? c.name.toLowerCase().includes(q) : true))
+      .filter((c) => chatNameMatches(c.name, q))
       .filter((c) => (labelFilterId ? (labelFilterChatIds ?? []).includes(c.id) : true))
       .filter((c) => {
         if (filter === "unread") return (c.unreadCount ?? 0) > 0;
