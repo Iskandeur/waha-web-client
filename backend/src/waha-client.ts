@@ -145,6 +145,14 @@ interface WahaCallMeta {
   chatId?: string;
 }
 
+/** A caller-owned abort is a local budget decision, not evidence that WAHA is down.
+ *  In particular, the history indexer deliberately cancels slow reads; counting those
+ *  cancellations would let a best-effort search disable every read and send for the
+ *  circuit breaker's full cooldown. Network errors and HTTP failures still count. */
+export function countsTowardCircuitBreaker(signal?: AbortSignal | null): boolean {
+  return !signal?.aborted;
+}
+
 /** The ONLY function in this codebase that performs an HTTP call against WAHA. Every entry in
  *  `waha` below funnels through here, and every call — reads included — passes the circuit
  *  breaker check and gets logged, which is what makes "no WAHA request bypasses the guard"
@@ -191,7 +199,9 @@ async function wahaFetch<T>(path: string, init: RequestInit, meta: WahaCallMeta)
   try {
     res = await fetch(url, { ...init, headers });
   } catch (err) {
-    circuitBreaker.recordFailure(now);
+    if (countsTowardCircuitBreaker(init.signal)) {
+      circuitBreaker.recordFailure(now);
+    }
     throw err;
   }
 
